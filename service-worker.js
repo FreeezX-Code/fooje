@@ -2,7 +2,7 @@
 // Strategie "erst Netz, dann Zwischenspeicher": Mit Netz kommt immer die neueste Version,
 // ohne Netz die zuletzt gespeicherte. So muss bei Änderungen nichts von Hand erneuert werden.
 
-const CACHE_NAME = 'app-shell-v3';
+const CACHE_NAME = 'app-shell-v4';
 
 const APP_FILES = [
   './',
@@ -20,7 +20,8 @@ const APP_FILES = [
 
 // Beim Installieren: alle App-Dateien einmal in den Zwischenspeicher laden
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_FILES)));
+  const requests = APP_FILES.map((file) => new Request(file, { cache: 'no-cache' }));
+  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(requests)));
   self.skipWaiting();
 });
 
@@ -46,8 +47,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // cache: 'no-cache' = immer beim Server nachfragen, ob es eine neuere Version gibt.
+  // Sonst nimmt der Browser bis zu 10 Minuten alte Dateien (GitHub Pages erlaubt das),
+  // und es kann eine Mischung aus alten und neuen Dateien entstehen.
   event.respondWith(
-    fetch(request)
+    fetch(request, { cache: 'no-cache' })
       .then((response) => {
         const copy = response.clone();
         caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
