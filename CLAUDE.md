@@ -48,14 +48,19 @@ Das Modell so anlegen, dass später Felder und Tabellen für die Wochenplanung e
 
 ## Ausbaustufen
 
-1. **Grundgerüst, Login und Rezeptsammlung** ← AKTUELL
+1. **Grundgerüst, Login und Rezeptsammlung** ✓ abgeschlossen
    - Leere PWA lokal zum Laufen bringen, dann online stellen und auf beiden Handys zum Startbildschirm hinzufügen
    - Supabase einrichten: Projekt, Tabellen, zwei Logins
    - Rezepte anlegen, bearbeiten, löschen, ansehen (das Formular wird später zum Prüf-Bildschirm für importierte Rezepte, siehe „Wie Rezepte in die App kommen“)
    - Liste mit Suche und Filter nach Hauptkomponente und Tags
    - Änderungen erscheinen auf beiden Handys
    - Backup: alle Rezepte als JSON-Datei exportieren und wieder importieren
-2. Wochenplan und Kalender: Generator mit Regeln für Ausgewogenheit, Wochenansicht Mo–So, Gerichte verschieben, tauschen, neu würfeln, Tage sperren, automatische Planung am gewählten Wochentag mit Benachrichtigung
+2. **Wochenplan und Kalender** ← AKTUELL
+   - Ein Gericht pro Tag, Wochenansicht Mo–So, Navigation über eine Leiste „Rezepte | Wochenplan“
+   - Generator mit Regeln für Ausgewogenheit, die Regeln sind in der App einstellbar: je Hauptkomponente mindestens/höchstens pro Woche, nicht zweimal hintereinander dieselbe Hauptkomponente bzw. Beilage, Rezepte der letzten X Wochen meiden, Favoriten bevorzugen. Reichen die Rezepte nicht, trotzdem planen und sagen, welche Regel nicht eingehalten wurde
+   - Pro Tag: neu würfeln, Gericht festhalten (bleibt beim Neu-Würfeln stehen), Tag frei (nichts planen), Rezept selbst auswählen, mit anderem Tag tauschen/verschieben
+   - Wochenplan erscheint live auf beiden Handys und ist offline lesbar
+   - Später (verschoben): automatische Planung am gewählten Wochentag mit Benachrichtigung
 3. Bring!-Anbindung: Zutaten der Woche zusammenfassen und über eine Supabase-Funktion an Bring! übergeben (inoffizielle API), Fallback „als Text teilen“
 4. Import aus Web und TikTok: Android über das Teilen-Menü (Web Share Target), iPhone über Link einfügen oder Kurzbefehl; Webrezepte über Schema.org-Daten auslesen, TikTok über Beschreibung und KI; Import als Entwurf
 
