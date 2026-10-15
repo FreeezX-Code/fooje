@@ -128,8 +128,16 @@ export function renderSkeletonList(container) {
 export function renderRecipeDetail(container, recipe, imageUrl, onDelete) {
   container.replaceChildren();
 
-  const back = el('a', 'back-link', '‹ Alle Rezepte');
-  back.href = '#';
+  // "Zurück" führt dorthin, wo man herkam (Wochenplan oder Rezeptliste).
+  // Wurde die App direkt auf dem Rezept geöffnet, geht es zur Rezeptliste.
+  const back = el('a', 'back-link', '‹ Zurück');
+  back.href = '#/recipes';
+  back.addEventListener('click', (event) => {
+    if (history.length > 1) {
+      event.preventDefault();
+      history.back();
+    }
+  });
   container.append(back);
 
   container.append(recipeImage(recipe, imageUrl, 'recipe-hero'));

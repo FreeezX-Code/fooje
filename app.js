@@ -87,6 +87,7 @@ let weekMonday = startOfWeek(new Date()); // Montag der angezeigten Woche
 let plannerRules = null; // Regeln für den Generator (geladen beim Öffnen der Regel-Seite)
 let rulesEdited = false; // true, sobald auf der Regel-Seite etwas geändert wurde
 let currentView = null; // gerade sichtbare Ansicht (für die Einblend-Animation)
+let detailTab = 'recipes'; // Reiter, von dem aus das angezeigte Rezept geöffnet wurde
 
 // Aktuelle Suche/Filter der Liste (bleiben erhalten, wenn man in ein Rezept und zurück geht)
 const filter = { query: '', mainComponent: null, tags: new Set() };
@@ -661,7 +662,7 @@ function handleRemoteDelete(id) {
   rememberRecipes();
   showList();
   // Wer gerade genau dieses Rezept ansieht, landet in der Liste
-  if (location.hash === '#/recipe/' + id) location.replace('#');
+  if (location.hash === '#/recipe/' + id) location.replace('#/recipes');
   else refreshView();
 }
 
@@ -722,9 +723,11 @@ function renderRoute() {
   const detailMatch = hash.match(/^#\/recipe\/([^/]+)$/);
   const findRecipe = (match) => (match ? recipes.find((r) => r.id === match[1]) : null);
 
-  let view = listView;
+  let view = null;
   const weekMatch = hash.match(/^#\/week(?:\/(\d{4}-\d{2}-\d{2}))?$/);
-  if (weekMatch) {
+  if (hash === '#/recipes') {
+    view = listView;
+  } else if (weekMatch) {
     // "#/week" = aktuelle Woche, "#/week/2026-10-26" = Woche mit diesem Tag
     showWeek(startOfWeek(weekMatch[1] ? parseIsoDate(weekMatch[1]) : new Date()));
     view = weekView;
@@ -753,14 +756,25 @@ function renderRoute() {
     const recipe = findRecipe(detailMatch);
     renderRecipeDetail(detailView, recipe, imageUrls[recipe.image_path], handleDelete);
     view = detailView;
+  } else if (editMatch || detailMatch) {
+    // Rezept (noch) nicht bekannt, z. B. während die Rezepte laden: Rezeptliste zeigen
+    view = listView;
+  }
+
+  // Alles andere (auch die leere Adresse beim Start): Wochenplan der aktuellen Woche
+  if (!view) {
+    showWeek(startOfWeek(new Date()));
+    view = weekView;
   }
 
   for (const v of [listView, detailView, formView, weekView, rulesView]) v.hidden = v !== view;
   formError.textContent = '';
 
   // Leiste unten: aktiven Reiter markieren, Überschrift anpassen.
+  // Ein Rezept gehört zu dem Reiter, von dem aus es geöffnet wurde.
   // In Formularen ausblenden, dort stehen unten "Speichern/Abbrechen".
-  const activeTab = view === weekView || view === rulesView ? 'week' : 'recipes';
+  if (view === detailView && currentView !== detailView) detailTab = currentView === weekView ? 'week' : 'recipes';
+  const activeTab = view === weekView || view === rulesView || (view === detailView && detailTab === 'week') ? 'week' : 'recipes';
   for (const tab of tabBar.querySelectorAll('.tab')) {
     if (tab.dataset.tab === activeTab) tab.setAttribute('aria-current', 'page');
     else tab.removeAttribute('aria-current');
@@ -835,7 +849,7 @@ recipeForm.addEventListener('submit', async (event) => {
 });
 
 cancelButton.addEventListener('click', () => {
-  location.replace(editingId ? '#/recipe/' + editingId : '#');
+  location.replace(editingId ? '#/recipe/' + editingId : '#/recipes');
 });
 
 async function handleDelete(recipe) {
@@ -846,7 +860,7 @@ async function handleDelete(recipe) {
     recipes = recipes.filter((r) => r.id !== recipe.id);
     rememberRecipes();
     showList();
-    location.replace('#');
+    location.replace('#/recipes');
   } catch (error) {
     console.error(error);
     alert('Löschen fehlgeschlagen: ' + saveErrorText(error));
