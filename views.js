@@ -36,7 +36,15 @@ function el(tag, className, text) {
   return element;
 }
 
-function placeholder(recipe, className) {
+// Rezeptbild, oder ein Symbol als Platzhalter, wenn es (noch) kein Bild gibt
+function recipeImage(recipe, imageUrl, className) {
+  if (imageUrl) {
+    const img = el('img', 'recipe-image ' + className);
+    img.src = imageUrl;
+    img.alt = recipe.name;
+    img.loading = 'lazy';
+    return img;
+  }
   return el('div', 'recipe-placeholder ' + className, MAIN_COMPONENT_ICONS[recipe.main_component] || '🍽️');
 }
 
@@ -62,7 +70,8 @@ function isWebLink(url) {
   return /^https?:\/\//i.test(url || '');
 }
 
-export function renderRecipeList(container, recipes) {
+// imageUrls = { Bildpfad: Link } für alle Rezepte mit Bild
+export function renderRecipeList(container, recipes, imageUrls) {
   container.replaceChildren();
   for (const recipe of recipes) {
     const link = el('a', 'recipe-card');
@@ -71,7 +80,7 @@ export function renderRecipeList(container, recipes) {
     const text = el('div', 'recipe-card-text');
     text.append(el('span', 'recipe-card-name', recipe.name), el('span', 'recipe-card-meta', metaLine(recipe)));
 
-    link.append(placeholder(recipe, 'recipe-placeholder-small'), text);
+    link.append(recipeImage(recipe, imageUrls[recipe.image_path], 'recipe-image-small'), text);
     if (recipe.is_favorite) link.append(el('span', 'favorite', '★'));
 
     const item = el('li');
@@ -80,15 +89,15 @@ export function renderRecipeList(container, recipes) {
   }
 }
 
-// onDelete wird aufgerufen, wenn auf "Löschen" getippt wird
-export function renderRecipeDetail(container, recipe, onDelete) {
+// imageUrl = Link zum Bild (oder undefined), onDelete wird bei "Löschen" aufgerufen
+export function renderRecipeDetail(container, recipe, imageUrl, onDelete) {
   container.replaceChildren();
 
   const back = el('a', 'back-link', '‹ Alle Rezepte');
   back.href = '#';
   container.append(back);
 
-  container.append(placeholder(recipe, 'recipe-placeholder-large'));
+  container.append(recipeImage(recipe, imageUrl, 'recipe-image-large'));
 
   const title = el('h2', 'recipe-title', recipe.name);
   if (recipe.is_favorite) title.append(el('span', 'favorite', ' ★'));

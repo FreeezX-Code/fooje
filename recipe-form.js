@@ -7,7 +7,88 @@ const formTitle = document.getElementById('form-title');
 const ingredientRows = document.getElementById('ingredient-rows');
 const stepRows = document.getElementById('step-rows');
 
+const imagePreview = document.getElementById('image-preview');
+const imageInput = document.getElementById('image-input');
+const imagePickText = document.getElementById('image-pick-text');
+const imageRemove = document.getElementById('image-remove');
+const imageError = document.getElementById('image-error');
+
 const field = (name) => form.elements.namedItem(name);
+
+// Bild-Auswahl im Formular:
+//   newImage    = neu gewähltes, verkleinertes Bild (noch nicht hochgeladen) oder null
+//   removeImage = true, wenn das vorhandene Bild entfernt werden soll
+let newImage = null;
+let removeImage = false;
+let previewObjectUrl = null;
+let pendingImage = null; // läuft gerade eine Verkleinerung? (Promise)
+
+const MAX_IMAGE_SIZE = 1200; // längste Seite in Pixeln
+
+// Verkleinert ein Foto auf höchstens MAX_IMAGE_SIZE Pixel und speichert es als JPEG
+async function resizeImage(file) {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, MAX_IMAGE_SIZE / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('Bild konnte nicht umgewandelt werden'))), 'image/jpeg', 0.8);
+  });
+}
+
+function showPreview(url) {
+  imagePreview.hidden = !url;
+  if (url) imagePreview.src = url;
+  else imagePreview.removeAttribute('src');
+  imageRemove.hidden = !url;
+  imagePickText.textContent = url ? 'Anderes Foto auswählen' : 'Foto auswählen';
+}
+
+function releasePreview() {
+  if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
+  previewObjectUrl = null;
+}
+
+async function prepareImage(file) {
+  imageError.textContent = '';
+  imagePickText.textContent = 'Foto wird vorbereitet …';
+  try {
+    newImage = await resizeImage(file);
+    removeImage = false;
+    releasePreview();
+    previewObjectUrl = URL.createObjectURL(newImage);
+    showPreview(previewObjectUrl);
+  } catch (error) {
+    console.error(error);
+    showPreview(imagePreview.hidden ? null : imagePreview.src);
+    imageError.textContent = 'Dieses Bild kann nicht verwendet werden. Bitte ein anderes Foto wählen.';
+  }
+}
+
+imageInput.addEventListener('change', () => {
+  const file = imageInput.files[0];
+  imageInput.value = ''; // damit dasselbe Foto erneut gewählt werden kann
+  if (!file) return;
+  pendingImage = prepareImage(file).finally(() => {
+    pendingImage = null;
+  });
+});
+
+imageRemove.addEventListener('click', () => {
+  newImage = null;
+  removeImage = true;
+  releasePreview();
+  showPreview(null);
+});
+
+// Wartet ggf., bis ein gerade gewähltes Foto fertig verkleinert ist
+export async function readImageChoice() {
+  if (pendingImage) await pendingImage;
+  return { newImage, removeImage };
+}
 
 // Auswahllisten einmalig füllen
 function fillSelect(select, labels) {
@@ -71,9 +152,16 @@ document.getElementById('add-step').addEventListener('click', () => {
 });
 
 // recipe = null → leeres Formular für ein neues Rezept
-export function fillRecipeForm(recipe) {
+// imageUrl = Link zum vorhandenen Bild (oder null)
+export function fillRecipeForm(recipe, imageUrl = null) {
   form.reset();
   formTitle.textContent = recipe ? 'Rezept bearbeiten' : 'Neues Rezept';
+
+  newImage = null;
+  removeImage = false;
+  releasePreview();
+  imageError.textContent = '';
+  showPreview(imageUrl);
 
   field('name').value = recipe?.name ?? '';
   field('main_component').value = recipe?.main_component ?? '';

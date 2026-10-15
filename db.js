@@ -45,3 +45,30 @@ export async function deleteRecipe(id) {
   const { error } = await supabase.from('recipes').delete().eq('id', id);
   if (error) throw error;
 }
+
+// ---- Rezeptbilder (Supabase Storage) ----
+
+const IMAGE_BUCKET = 'recipe-images';
+
+// Lädt ein Bild hoch und gibt seinen Pfad zurück (zufälliger Dateiname)
+export async function uploadImage(blob) {
+  const path = crypto.randomUUID() + '.jpg';
+  const { error } = await supabase.storage.from(IMAGE_BUCKET).upload(path, blob, { contentType: 'image/jpeg' });
+  if (error) throw error;
+  return path;
+}
+
+// Löschen klappt nicht? Dann bleibt nur eine ungenutzte Datei übrig – kein Grund für eine Fehlermeldung.
+export async function deleteImage(path) {
+  const { error } = await supabase.storage.from(IMAGE_BUCKET).remove([path]);
+  if (error) console.warn('Bild konnte nicht gelöscht werden:', error);
+}
+
+// Der Bildspeicher ist privat. Zum Anzeigen braucht jedes Bild einen
+// zeitlich begrenzten Link (hier 7 Tage). Gibt { pfad: link } zurück.
+export async function getImageUrls(paths) {
+  if (paths.length === 0) return {};
+  const { data, error } = await supabase.storage.from(IMAGE_BUCKET).createSignedUrls(paths, 7 * 24 * 60 * 60);
+  if (error) throw error;
+  return Object.fromEntries(data.filter((item) => item.signedUrl).map((item) => [item.path, item.signedUrl]));
+}

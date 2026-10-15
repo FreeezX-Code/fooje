@@ -1,7 +1,11 @@
 // Einstiegspunkt der App: entscheidet, welche Ansicht gezeigt wird.
-import { onAuthChange, signIn, signOut, fetchRecipes, createRecipe, updateRecipe, deleteRecipe } from './db.js';
+import {
+  onAuthChange, signIn, signOut,
+  fetchRecipes, createRecipe, updateRecipe, deleteRecipe,
+  uploadImage, deleteImage, getImageUrls,
+} from './db.js';
 import { renderRecipeList, renderRecipeDetail } from './views.js';
-import { fillRecipeForm, readRecipeForm } from './recipe-form.js';
+import { fillRecipeForm, readRecipeForm, readImageChoice } from './recipe-form.js';
 
 const loadingView = document.getElementById('loading-view');
 const loginView = document.getElementById('login-view');
@@ -25,6 +29,7 @@ const saveButton = document.getElementById('save-button');
 const cancelButton = document.getElementById('cancel-button');
 
 let recipes = [];
+let imageUrls = {}; // { Bildpfad: Link zum Anzeigen }
 let currentUserId = null;
 let editingId = null; // id des Rezepts im Formular, null = neues Rezept
 
@@ -49,7 +54,17 @@ function sortRecipes() {
 
 function showList() {
   listMessage.textContent = recipes.length === 0 ? 'Noch keine Rezepte vorhanden.' : '';
-  renderRecipeList(recipeList, recipes);
+  renderRecipeList(recipeList, recipes, imageUrls);
+}
+
+// Holt Anzeige-Links für die angegebenen Bilder. Klappt das nicht,
+// erscheinen eben Platzhalter – die Rezepte selbst bleiben nutzbar.
+async function loadImageUrls(paths) {
+  try {
+    Object.assign(imageUrls, await getImageUrls(paths));
+  } catch (error) {
+    console.error('Bild-Links konnten nicht geladen werden:', error);
+  }
 }
 
 async function loadRecipes() {
@@ -57,6 +72,8 @@ async function loadRecipes() {
   try {
     recipes = await fetchRecipes();
     sortRecipes();
+    imageUrls = {};
+    await loadImageUrls(recipes.map((r) => r.image_path).filter(Boolean));
     showList();
   } catch (error) {
     console.error(error);
@@ -85,10 +102,11 @@ function showRoute() {
   } else if (findRecipe(editMatch)) {
     const recipe = findRecipe(editMatch);
     editingId = recipe.id;
-    fillRecipeForm(recipe);
+    fillRecipeForm(recipe, imageUrls[recipe.image_path]);
     view = formView;
   } else if (findRecipe(detailMatch)) {
-    renderRecipeDetail(detailView, findRecipe(detailMatch), handleDelete);
+    const recipe = findRecipe(detailMatch);
+    renderRecipeDetail(detailView, recipe, imageUrls[recipe.image_path], handleDelete);
     view = detailView;
   }
 
@@ -109,9 +127,34 @@ recipeForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   formError.textContent = '';
   saveButton.disabled = true;
+  saveButton.textContent = 'Speichert …';
   try {
     const data = readRecipeForm();
-    const saved = editingId ? await updateRecipe(editingId, data) : await createRecipe(data);
+    const { newImage, removeImage } = await readImageChoice();
+    const oldImagePath = editingId ? recipes.find((r) => r.id === editingId)?.image_path ?? null : null;
+
+    // 1. Neues Bild zuerst hochladen, damit sein Pfad mit dem Rezept gespeichert werden kann
+    let uploadedPath = null;
+    if (newImage) {
+      uploadedPath = await uploadImage(newImage);
+      data.image_path = uploadedPath;
+    } else if (removeImage) {
+      data.image_path = null;
+    }
+
+    // 2. Rezept speichern. Schlägt das fehl, das gerade hochgeladene Bild wieder entfernen.
+    let saved;
+    try {
+      saved = editingId ? await updateRecipe(editingId, data) : await createRecipe(data);
+    } catch (error) {
+      if (uploadedPath) deleteImage(uploadedPath);
+      throw error;
+    }
+
+    // 3. Ersetztes oder entferntes altes Bild löschen, Anzeige-Link fürs neue holen
+    if (oldImagePath && oldImagePath !== saved.image_path) deleteImage(oldImagePath);
+    if (saved.image_path && !imageUrls[saved.image_path]) await loadImageUrls([saved.image_path]);
+
     recipes = recipes.filter((r) => r.id !== saved.id).concat(saved);
     sortRecipes();
     showList();
@@ -122,6 +165,7 @@ recipeForm.addEventListener('submit', async (event) => {
     formError.textContent = 'Speichern fehlgeschlagen: ' + saveErrorText(error);
   } finally {
     saveButton.disabled = false;
+    saveButton.textContent = 'Speichern';
   }
 });
 
@@ -133,6 +177,7 @@ async function handleDelete(recipe) {
   if (!confirm(`„${recipe.name}“ wirklich löschen?`)) return;
   try {
     await deleteRecipe(recipe.id);
+    if (recipe.image_path) deleteImage(recipe.image_path);
     recipes = recipes.filter((r) => r.id !== recipe.id);
     showList();
     location.replace('#');

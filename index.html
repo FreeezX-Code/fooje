@@ -69,6 +69,16 @@
             Name
             <input name="name" type="text" required autocomplete="off">
           </label>
+          <div class="form-group">
+            <span class="field-label">Bild</span>
+            <img id="image-preview" class="image-preview" alt="Vorschau des Rezeptbilds" hidden>
+            <label class="button-secondary file-button">
+              <span id="image-pick-text">Foto auswählen</span>
+              <input id="image-input" type="file" accept="image/*" hidden>
+            </label>
+            <button id="image-remove" type="button" class="button-danger" hidden>Bild entfernen</button>
+            <p id="image-error" class="error" role="alert"></p>
+          </div>
           <label>
             Hauptkomponente
             <select name="main_component" required>
