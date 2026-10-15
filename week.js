@@ -70,7 +70,8 @@ function thumbnail(recipe, imageUrl) {
 
 // Zeichnet die 7 Tage ab "monday".
 // entries = { "2026-10-19": Eintrag aus meal_plan_days, … }, recipes = alle Rezepte
-export function renderWeek(container, monday, entries, recipes, imageUrls) {
+// highlight = Set von Tagen, die gerade neu geplant wurden (leuchten kurz auf)
+export function renderWeek(container, monday, entries, recipes, imageUrls, highlight = new Set()) {
   container.replaceChildren();
   const today = toIsoDate(new Date());
 
@@ -112,6 +113,7 @@ export function renderWeek(container, monday, entries, recipes, imageUrls) {
     card.append(dateBox, content);
     const item = el('li');
     item.style.setProperty('--i', i);
+    if (highlight.has(iso)) item.classList.add('just-planned');
     item.append(card);
     container.append(item);
   }

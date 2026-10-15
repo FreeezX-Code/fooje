@@ -2,13 +2,14 @@
 import {
   onAuthChange, signIn, signOut, hasStoredSession, getCurrentSession,
   fetchRecipes, createRecipe, updateRecipe, deleteRecipe, insertRecipes,
-  subscribeToRecipeChanges, unsubscribeFromRecipeChanges, fetchPlanDays, fetchPlannerRules, savePlannerRules,
+  subscribeToRecipeChanges, unsubscribeFromRecipeChanges,
+  fetchPlanDays, savePlanDays, fetchPlannerRules, savePlannerRules,
   uploadImage, deleteImage, getImageUrls,
 } from './db.js';
 import { saveRecipeCache, readRecipeCache, clearRecipeCache } from './offline.js';
 import { createBackupFile, shareOrDownload, parseBackup } from './backup.js';
 import { renderWeek, startOfWeek, addDays, toIsoDate, parseIsoDate, isoWeekNumber, weekRangeLabel } from './week.js';
-import { normalizeRules, checkRules } from './planner.js';
+import { normalizeRules, checkRules, generateWeek } from './planner.js';
 import { fillRulesForm, readRulesForm } from './rules-form.js';
 import { renderRecipeList, renderSkeletonList, renderRecipeDetail, renderChips, MAIN_COMPONENT_LABELS } from './views.js';
 import { fillRecipeForm, readRecipeForm, readImageChoice } from './recipe-form.js';
@@ -52,6 +53,9 @@ const weekNext = document.getElementById('week-next');
 const weekToday = document.getElementById('week-today');
 const weekMessage = document.getElementById('week-message');
 const weekDays = document.getElementById('week-days');
+const planWeekButton = document.getElementById('plan-week');
+const rerollWeekButton = document.getElementById('reroll-week');
+const weekNotes = document.getElementById('week-notes');
 const rulesView = document.getElementById('rules-view');
 const rulesForm = document.getElementById('rules-form');
 const rulesMessage = document.getElementById('rules-message');
@@ -274,9 +278,98 @@ function showWeek(monday) {
   weekNumber.textContent = 'KW ' + isoWeekNumber(monday);
   weekRange.textContent = weekRangeLabel(monday);
   weekToday.hidden = toIsoDate(monday) === toIsoDate(startOfWeek(new Date()));
+  if (isNewWeek) weekNotes.hidden = true;
   renderWeek(weekDays, monday, planEntries, recipes, imageUrls);
+  updatePlanButtons();
   loadWeek(monday, isNewWeek);
 }
+
+// Die 7 Tage der angezeigten Woche mit der Angabe, ob der Generator sie belegen darf:
+// nur ab heute, nicht frei, nicht festgehalten, nicht gekauft – und bei "nur leere füllen" ohne Rezept
+function weekDaysForPlanning(rerollAll) {
+  const today = toIsoDate(new Date());
+  return Array.from({ length: 7 }, (_, i) => {
+    const day = toIsoDate(addDays(weekMonday, i));
+    const entry = planEntries[day];
+    const changeable = day >= today && !entry?.is_day_off && !entry?.is_locked && !entry?.is_purchased;
+    return { day, entry, fillable: changeable && (rerollAll || !entry?.recipe_id) };
+  });
+}
+
+// "Woche planen" nur, wenn es leere Tage gibt; "Alles neu würfeln" nur, wenn schon etwas geplant ist
+function updatePlanButtons() {
+  planWeekButton.hidden = !weekDaysForPlanning(false).some((d) => d.fillable);
+  rerollWeekButton.hidden = !weekDaysForPlanning(true).some((d) => d.fillable && d.entry?.recipe_id);
+}
+
+function showWeekNotes(notes, plannedCount) {
+  weekNotes.replaceChildren();
+  const title = document.createElement('p');
+  title.className = 'week-notes-title';
+  title.textContent = plannedCount === 0 ? 'Nichts geplant.' : notes.length > 0 ? '✓ Geplant – mit Hinweisen:' : '✓ Woche geplant.';
+  weekNotes.append(title);
+  if (notes.length > 0) {
+    const list = document.createElement('ul');
+    for (const note of notes) {
+      const item = document.createElement('li');
+      item.textContent = note;
+      list.append(item);
+    }
+    weekNotes.append(list);
+  }
+  weekNotes.classList.toggle('has-problems', notes.length > 0);
+  weekNotes.hidden = false;
+}
+
+async function planWeek(rerollAll) {
+  if (rerollAll && !confirm('Alle Tage ab heute neu würfeln?\nFestgehaltene und freie Tage bleiben, wie sie sind.')) return;
+  const monday = weekMonday;
+  planWeekButton.disabled = true;
+  planWeekButton.textContent = '🎲 Plane …';
+  weekMessage.textContent = '';
+  try {
+    plannerRules ??= normalizeRules(await fetchPlannerRules());
+
+    // Frischen Stand dieser Woche holen (vielleicht hat das andere Handy gerade geplant)
+    await loadWeek(monday, false);
+
+    // Rückblick: Tag vor Montag (für "nicht zweimal hintereinander") und die letzten Wochen
+    const weeksBack = Math.max(plannerRules.avoid_recent_weeks, 1);
+    const sundayBefore = toIsoDate(addDays(monday, -1));
+    const history = await fetchPlanDays(toIsoDate(addDays(monday, -7 * weeksBack)), sundayBefore);
+    const recentRecipeIds = new Set(
+      plannerRules.avoid_recent_weeks > 0 ? history.filter((h) => h.recipe_id && !h.is_day_off).map((h) => h.recipe_id) : []
+    );
+    const dayBefore = history.find((h) => h.day === sundayBefore && !h.is_day_off);
+
+    const { assignments, notes } = generateWeek({
+      days: weekDaysForPlanning(rerollAll),
+      recipes,
+      rules: plannerRules,
+      previousDayRecipeId: dayBefore?.recipe_id ?? null,
+      recentRecipeIds,
+    });
+
+    const rows = Object.entries(assignments).map(([day, recipe_id]) => ({ day, recipe_id, is_locked: false, is_day_off: false }));
+    if (rows.length > 0) {
+      for (const saved of await savePlanDays(rows)) planEntries[saved.day] = saved;
+    }
+    if (toIsoDate(monday) === toIsoDate(weekMonday)) {
+      renderWeek(weekDays, monday, planEntries, recipes, imageUrls, new Set(rows.map((r) => r.day)));
+      showWeekNotes(notes, rows.length);
+    }
+  } catch (error) {
+    console.error(error);
+    weekMessage.textContent = 'Planen fehlgeschlagen: ' + saveErrorText(error);
+  } finally {
+    planWeekButton.disabled = false;
+    planWeekButton.textContent = '🎲 Woche planen';
+    updatePlanButtons();
+  }
+}
+
+planWeekButton.addEventListener('click', () => planWeek(false));
+rerollWeekButton.addEventListener('click', () => planWeek(true));
 
 // showLoading: Tage kurz abblenden (nur beim Wechsel der Woche, nicht bei jeder Aktualisierung)
 async function loadWeek(monday, showLoading) {
@@ -297,7 +390,10 @@ async function loadWeek(monday, showLoading) {
   }
   weekDays.classList.remove('is-loading');
   // Nur neu zeichnen, wenn noch dieselbe Woche angezeigt wird
-  if (toIsoDate(monday) === toIsoDate(weekMonday)) renderWeek(weekDays, monday, planEntries, recipes, imageUrls);
+  if (toIsoDate(monday) === toIsoDate(weekMonday)) {
+    renderWeek(weekDays, monday, planEntries, recipes, imageUrls);
+    updatePlanButtons();
+  }
 }
 
 // ---- Regeln für den Wochenplan ----

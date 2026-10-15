@@ -80,6 +80,14 @@ export async function fetchPlanDays(from, to) {
   return data;
 }
 
+// Tage eintragen oder ändern (ein Eintrag pro Tag; vorhandene Tage werden überschrieben).
+// Nur die mitgeschickten Spalten werden geändert.
+export async function savePlanDays(rows) {
+  const { data, error } = await supabase.from('meal_plan_days').upsert(rows, { onConflict: 'day' }).select();
+  if (error) throw error;
+  return data;
+}
+
 // Regeln für den Generator (genau eine Zeile mit id 1)
 export async function fetchPlannerRules() {
   const { data, error } = await supabase.from('planner_settings').select('rules').eq('id', 1).maybeSingle();

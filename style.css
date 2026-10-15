@@ -457,7 +457,9 @@ body.has-tab-bar .fab {
 /* Offline kann nichts gespeichert werden: Neu, Bearbeiten, Löschen und Einspielen ausblenden */
 .offline .new-recipe-button,
 .offline .detail-actions,
-.offline .import-button {
+.offline .import-button,
+.offline .plan-actions,
+.offline .week-rules-button {
   display: none;
 }
 
@@ -704,6 +706,58 @@ body.has-tab-bar .fab {
 
 .pill-button:active {
   transform: scale(0.95);
+}
+
+.plan-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin-top: 12px;
+}
+
+.plan-actions .link-button {
+  align-self: center;
+}
+
+/* Ergebnis des Generators: Erfolg oder Hinweise, welche Regeln nicht eingehalten werden konnten */
+.week-notes {
+  margin-top: 12px;
+  padding: 12px 16px;
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  animation: fade-up 0.3s var(--ease) both;
+}
+
+.week-notes.has-problems {
+  background: var(--color-banner);
+}
+
+.week-notes-title {
+  margin: 0;
+  font-weight: 700;
+}
+
+.week-notes ul {
+  margin: 6px 0 0;
+  padding-left: 1.2em;
+}
+
+.week-notes li {
+  margin-bottom: 4px;
+}
+
+/* Neu geplante Tage leuchten nacheinander kurz auf */
+@keyframes planned-pop {
+  0% { transform: scale(0.96); box-shadow: 0 0 0 0 var(--color-primary); }
+  40% { transform: scale(1.02); box-shadow: 0 0 0 3px var(--color-primary); }
+  100% { transform: none; box-shadow: var(--shadow); }
+}
+
+.week-days > li.just-planned .day-card {
+  animation: planned-pop 0.6s var(--ease) both;
+  animation-delay: calc(var(--i) * 90ms);
 }
 
 .week-days {
