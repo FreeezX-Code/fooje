@@ -35,6 +35,17 @@ export function isoWeekNumber(date) {
   return 1 + Math.round((thursday - firstThursday) / (7 * 24 * 60 * 60 * 1000));
 }
 
+// "2026-10-21" → "Mittwoch, 21.10."
+export function formatDayLong(iso) {
+  return parseIsoDate(iso).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'numeric' });
+}
+
+// "2026-10-21" → "Mi 21.10."
+export function formatDayShort(iso) {
+  const date = parseIsoDate(iso);
+  return `${WEEKDAYS[(date.getDay() + 6) % 7]} ${date.getDate()}.${date.getMonth() + 1}.`;
+}
+
 // z. B. "19.–25. Oktober" oder "27. Okt. – 2. Nov."
 export function weekRangeLabel(monday) {
   const sunday = addDays(monday, 6);
@@ -70,8 +81,9 @@ function thumbnail(recipe, imageUrl) {
 
 // Zeichnet die 7 Tage ab "monday".
 // entries = { "2026-10-19": Eintrag aus meal_plan_days, … }, recipes = alle Rezepte
-// highlight = Set von Tagen, die gerade neu geplant wurden (leuchten kurz auf)
-export function renderWeek(container, monday, entries, recipes, imageUrls, highlight = new Set()) {
+// highlight = Set von Tagen, die gerade geändert wurden (leuchten kurz auf)
+// onEdit(tag) = wird beim Antippen von "⋯" bzw. eines leeren Tages aufgerufen
+export function renderWeek(container, monday, entries, recipes, imageUrls, { highlight = new Set(), onEdit = () => {} } = {}) {
   container.replaceChildren();
   const today = toIsoDate(new Date());
 
@@ -79,11 +91,9 @@ export function renderWeek(container, monday, entries, recipes, imageUrls, highl
     const date = addDays(monday, i);
     const iso = toIsoDate(date);
     const entry = entries[iso];
-    const recipe = entry?.recipe_id ? recipes.find((r) => r.id === entry.recipe_id) : null;
+    const recipe = entry?.recipe_id && !entry.is_day_off ? recipes.find((r) => r.id === entry.recipe_id) : null;
 
-    // Mit Rezept ist die ganze Karte ein Link zum Rezept
-    const card = el(recipe ? 'a' : 'div', 'day-card');
-    if (recipe) card.href = '#/recipe/' + recipe.id;
+    const card = el('div', 'day-card');
     if (iso === today) card.classList.add('is-today');
     if (iso < today) card.classList.add('is-past');
 
@@ -91,26 +101,37 @@ export function renderWeek(container, monday, entries, recipes, imageUrls, highl
     dateBox.append(el('span', 'day-weekday', WEEKDAYS[i]), el('span', 'day-number', String(date.getDate())));
     if (iso === today) dateBox.append(el('span', 'day-today', 'Heute'));
 
-    const content = el('div', 'day-content');
-    if (entry?.is_day_off) {
-      content.classList.add('is-empty');
-      content.append(el('span', 'day-empty-icon', '🍽'), el('span', null, 'Frei – heute wird nicht gekocht'));
-    } else if (recipe) {
+    // Mit Rezept: Antippen öffnet das Rezept. Sonst: Antippen öffnet das Menü für diesen Tag.
+    let content;
+    if (recipe) {
+      content = el('a', 'day-content');
+      content.href = '#/recipe/' + recipe.id;
       const text = el('div', 'day-text');
       const name = el('span', 'day-recipe-name', recipe.name);
-      if (entry.is_locked) name.prepend(el('span', 'day-lock', '🔒'));
+      const badges = [entry.is_locked ? '🔒' : null, entry.is_purchased ? '🛒' : null].filter(Boolean);
+      if (badges.length > 0) name.prepend(el('span', 'day-badges', badges.join(' ')));
       const meta = [recipe.prep_time_minutes ? recipe.prep_time_minutes + ' Min.' : null, MAIN_COMPONENT_LABELS[recipe.main_component]];
       text.append(name, el('span', 'day-recipe-meta', meta.filter(Boolean).join(' · ')));
       content.append(thumbnail(recipe, imageUrls[recipe.image_path]), text);
-    } else if (entry?.recipe_id) {
-      content.classList.add('is-empty');
-      content.append(el('span', null, 'Rezept nicht gefunden'));
     } else {
-      content.classList.add('is-empty');
-      content.append(el('span', null, 'Noch nichts geplant'));
+      content = el('button', 'day-content is-empty');
+      content.type = 'button';
+      content.addEventListener('click', () => onEdit(iso));
+      if (entry?.is_day_off) {
+        content.append(el('span', 'day-empty-icon', '🍽'), el('span', null, 'Frei – heute wird nicht gekocht'));
+      } else if (entry?.recipe_id) {
+        content.append(el('span', null, 'Rezept nicht gefunden'));
+      } else {
+        content.append(el('span', null, 'Noch nichts geplant'), el('span', 'day-add', '+'));
+      }
     }
 
-    card.append(dateBox, content);
+    const menu = el('button', 'day-menu', '⋯');
+    menu.type = 'button';
+    menu.setAttribute('aria-label', `${WEEKDAYS[i]} ${date.getDate()}. bearbeiten`);
+    menu.addEventListener('click', () => onEdit(iso));
+
+    card.append(dateBox, content, menu);
     const item = el('li');
     item.style.setProperty('--i', i);
     if (highlight.has(iso)) item.classList.add('just-planned');

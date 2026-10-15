@@ -8,7 +8,10 @@ import {
 } from './db.js';
 import { saveRecipeCache, readRecipeCache, clearRecipeCache } from './offline.js';
 import { createBackupFile, shareOrDownload, parseBackup } from './backup.js';
-import { renderWeek, startOfWeek, addDays, toIsoDate, parseIsoDate, isoWeekNumber, weekRangeLabel } from './week.js';
+import {
+  renderWeek, startOfWeek, addDays, toIsoDate, parseIsoDate, isoWeekNumber, weekRangeLabel, formatDayLong, formatDayShort,
+} from './week.js';
+import { openSheet, openRecipePicker } from './sheet.js';
 import { normalizeRules, checkRules, generateWeek } from './planner.js';
 import { fillRulesForm, readRulesForm } from './rules-form.js';
 import { renderRecipeList, renderSkeletonList, renderRecipeDetail, renderChips, MAIN_COMPONENT_LABELS } from './views.js';
@@ -55,6 +58,7 @@ const weekMessage = document.getElementById('week-message');
 const weekDays = document.getElementById('week-days');
 const planWeekButton = document.getElementById('plan-week');
 const rerollWeekButton = document.getElementById('reroll-week');
+const purchaseWeekButton = document.getElementById('purchase-week');
 const weekNotes = document.getElementById('week-notes');
 const rulesView = document.getElementById('rules-view');
 const rulesForm = document.getElementById('rules-form');
@@ -279,9 +283,14 @@ function showWeek(monday) {
   weekRange.textContent = weekRangeLabel(monday);
   weekToday.hidden = toIsoDate(monday) === toIsoDate(startOfWeek(new Date()));
   if (isNewWeek) weekNotes.hidden = true;
-  renderWeek(weekDays, monday, planEntries, recipes, imageUrls);
-  updatePlanButtons();
+  drawWeek();
   loadWeek(monday, isNewWeek);
+}
+
+// Zeichnet die angezeigte Woche neu. highlight = Tage, die kurz aufleuchten sollen.
+function drawWeek(highlight = new Set()) {
+  renderWeek(weekDays, weekMonday, planEntries, recipes, imageUrls, { highlight, onEdit: editDay });
+  updatePlanButtons();
 }
 
 // Die 7 Tage der angezeigten Woche mit der Angabe, ob der Generator sie belegen darf:
@@ -296,18 +305,28 @@ function weekDaysForPlanning(rerollAll) {
   });
 }
 
-// "Woche planen" nur, wenn es leere Tage gibt; "Alles neu würfeln" nur, wenn schon etwas geplant ist
+// Geplante Tage ab heute (mit Rezept, nicht frei)
+function upcomingPlannedDays() {
+  const today = toIsoDate(new Date());
+  return Array.from({ length: 7 }, (_, i) => toIsoDate(addDays(weekMonday, i)))
+    .filter((day) => day >= today && planEntries[day]?.recipe_id && !planEntries[day].is_day_off);
+}
+
+// "Woche planen" nur, wenn es leere Tage gibt; "Alles neu würfeln" nur, wenn schon etwas geplant ist;
+// "Alles als gekauft markieren" nur, wenn noch nicht alles gekauft ist
 function updatePlanButtons() {
   planWeekButton.hidden = !weekDaysForPlanning(false).some((d) => d.fillable);
   rerollWeekButton.hidden = !weekDaysForPlanning(true).some((d) => d.fillable && d.entry?.recipe_id);
+  purchaseWeekButton.hidden = !upcomingPlannedDays().some((day) => !planEntries[day].is_purchased);
 }
 
-function showWeekNotes(notes, plannedCount) {
+// Kasten über den Tagen: Ergebnis einer Aktion, ggf. mit Hinweisen
+function showWeekNotes(title, notes = [], hasProblems = notes.length > 0) {
   weekNotes.replaceChildren();
-  const title = document.createElement('p');
-  title.className = 'week-notes-title';
-  title.textContent = plannedCount === 0 ? 'Nichts geplant.' : notes.length > 0 ? '✓ Geplant – mit Hinweisen:' : '✓ Woche geplant.';
-  weekNotes.append(title);
+  const heading = document.createElement('p');
+  heading.className = 'week-notes-title';
+  heading.textContent = title;
+  weekNotes.append(heading);
   if (notes.length > 0) {
     const list = document.createElement('ul');
     for (const note of notes) {
@@ -317,46 +336,43 @@ function showWeekNotes(notes, plannedCount) {
     }
     weekNotes.append(list);
   }
-  weekNotes.classList.toggle('has-problems', notes.length > 0);
+  weekNotes.classList.toggle('has-problems', hasProblems);
   weekNotes.hidden = false;
 }
 
+// Alles, was der Generator außer der Woche selbst braucht: Regeln, Rezepte der letzten Wochen, Sonntag davor
+async function planningContext(monday) {
+  plannerRules ??= normalizeRules(await fetchPlannerRules());
+  const weeksBack = Math.max(plannerRules.avoid_recent_weeks, 1);
+  const sundayBefore = toIsoDate(addDays(monday, -1));
+  const history = await fetchPlanDays(toIsoDate(addDays(monday, -7 * weeksBack)), sundayBefore);
+  const recentRecipeIds = new Set(
+    plannerRules.avoid_recent_weeks > 0 ? history.filter((h) => h.recipe_id && !h.is_day_off).map((h) => h.recipe_id) : []
+  );
+  const dayBefore = history.find((h) => h.day === sundayBefore && !h.is_day_off);
+  return { rules: plannerRules, recentRecipeIds, previousDayRecipeId: dayBefore?.recipe_id ?? null };
+}
+
 async function planWeek(rerollAll) {
-  if (rerollAll && !confirm('Alle Tage ab heute neu würfeln?\nFestgehaltene und freie Tage bleiben, wie sie sind.')) return;
+  if (rerollAll && !confirm('Alle Tage ab heute neu würfeln?\nFestgehaltene, gekaufte und freie Tage bleiben, wie sie sind.')) return;
   const monday = weekMonday;
   planWeekButton.disabled = true;
   planWeekButton.textContent = '🎲 Plane …';
   weekMessage.textContent = '';
   try {
-    plannerRules ??= normalizeRules(await fetchPlannerRules());
-
     // Frischen Stand dieser Woche holen (vielleicht hat das andere Handy gerade geplant)
     await loadWeek(monday, false);
-
-    // Rückblick: Tag vor Montag (für "nicht zweimal hintereinander") und die letzten Wochen
-    const weeksBack = Math.max(plannerRules.avoid_recent_weeks, 1);
-    const sundayBefore = toIsoDate(addDays(monday, -1));
-    const history = await fetchPlanDays(toIsoDate(addDays(monday, -7 * weeksBack)), sundayBefore);
-    const recentRecipeIds = new Set(
-      plannerRules.avoid_recent_weeks > 0 ? history.filter((h) => h.recipe_id && !h.is_day_off).map((h) => h.recipe_id) : []
-    );
-    const dayBefore = history.find((h) => h.day === sundayBefore && !h.is_day_off);
-
-    const { assignments, notes } = generateWeek({
-      days: weekDaysForPlanning(rerollAll),
-      recipes,
-      rules: plannerRules,
-      previousDayRecipeId: dayBefore?.recipe_id ?? null,
-      recentRecipeIds,
-    });
+    const context = await planningContext(monday);
+    const { assignments, notes } = generateWeek({ ...context, days: weekDaysForPlanning(rerollAll), recipes });
 
     const rows = Object.entries(assignments).map(([day, recipe_id]) => ({ day, recipe_id, is_locked: false, is_day_off: false }));
     if (rows.length > 0) {
       for (const saved of await savePlanDays(rows)) planEntries[saved.day] = saved;
     }
     if (toIsoDate(monday) === toIsoDate(weekMonday)) {
-      renderWeek(weekDays, monday, planEntries, recipes, imageUrls, new Set(rows.map((r) => r.day)));
-      showWeekNotes(notes, rows.length);
+      drawWeek(new Set(rows.map((r) => r.day)));
+      const title = rows.length === 0 ? 'Nichts geplant.' : notes.length > 0 ? '✓ Geplant – mit Hinweisen:' : '✓ Woche geplant.';
+      showWeekNotes(title, notes);
     }
   } catch (error) {
     console.error(error);
@@ -370,6 +386,167 @@ async function planWeek(rerollAll) {
 
 planWeekButton.addEventListener('click', () => planWeek(false));
 rerollWeekButton.addEventListener('click', () => planWeek(true));
+
+// ---- Einzelne Tage bearbeiten ----
+
+const EMPTY_DAY = { recipe_id: null, is_locked: false, is_day_off: false, is_purchased: false };
+
+// Alle Felder eines Tages (für Tauschen und Umschalten)
+function dayFields(entry) {
+  return {
+    recipe_id: entry?.recipe_id ?? null,
+    is_locked: entry?.is_locked ?? false,
+    is_day_off: entry?.is_day_off ?? false,
+    is_purchased: entry?.is_purchased ?? false,
+  };
+}
+
+const recipeById = (id) => recipes.find((r) => r.id === id) ?? null;
+
+// Tage speichern, Anzeige aktualisieren, geänderte Tage kurz aufleuchten lassen
+async function saveDays(rows) {
+  weekMessage.textContent = '';
+  try {
+    for (const saved of await savePlanDays(rows)) planEntries[saved.day] = saved;
+    drawWeek(new Set(rows.map((r) => r.day)));
+    return true;
+  } catch (error) {
+    console.error(error);
+    weekMessage.textContent = 'Speichern fehlgeschlagen: ' + saveErrorText(error);
+    return false;
+  }
+}
+
+// Nächster freier Tag nach "day" (frühestens morgen bzw. heute): kein Gericht und nicht "frei".
+// Sucht bis zu 8 Wochen voraus, notfalls also auch in den Folgewochen.
+async function findNextFreeDay(day) {
+  const today = toIsoDate(new Date());
+  const afterDay = toIsoDate(addDays(parseIsoDate(day), 1));
+  const start = afterDay > today ? afterDay : today;
+  const end = toIsoDate(addDays(parseIsoDate(start), 56));
+  for (const entry of await fetchPlanDays(start, end)) planEntries[entry.day] = entry;
+  for (let i = 0; i <= 56; i++) {
+    const candidate = toIsoDate(addDays(parseIsoDate(start), i));
+    const entry = planEntries[candidate];
+    if (!entry || (!entry.recipe_id && !entry.is_day_off)) return candidate;
+  }
+  return toIsoDate(addDays(parseIsoDate(start), 57));
+}
+
+// Muss ein gekauftes Gericht seinen Tag verlassen? Dann nachfragen.
+// Gibt zusätzliche zu speichernde Tage zurück ([] = nichts verschieben) oder null = Abbruch.
+async function askWherePurchasedGoes(day) {
+  const entry = planEntries[day];
+  const recipe = entry?.is_purchased && !entry.is_day_off ? recipeById(entry.recipe_id) : null;
+  if (!recipe) return [];
+  const target = await findNextFreeDay(day);
+  const choice = await openSheet({
+    title: 'Zutaten schon gekauft',
+    subtitle: `Für „${recipe.name}“ sind die Zutaten schon gekauft.`,
+    actions: [
+      { label: `➜ Auf ${formatDayLong(target)} verschieben`, value: 'move' },
+      { label: 'Nicht mehr einplanen', value: 'drop' },
+    ],
+  });
+  if (choice === null) return null;
+  if (choice === 'drop') return [];
+  showWeekNotes(`„${recipe.name}“ wurde auf ${formatDayLong(target)} verschoben.`, [], false);
+  return [{ day: target, ...EMPTY_DAY, recipe_id: recipe.id, is_purchased: true }];
+}
+
+// Nur diesen einen Tag neu auslosen (nach den Regeln, möglichst ein anderes Rezept als bisher)
+async function rerollDay(day, extraRows) {
+  try {
+    const context = await planningContext(weekMonday);
+    const current = planEntries[day]?.recipe_id;
+    if (current) context.recentRecipeIds.add(current);
+    const days = weekDaysForPlanning(true).map((d) => ({ ...d, fillable: d.day === day }));
+    const { assignments, notes } = generateWeek({ ...context, days, recipes });
+    if (!assignments[day]) {
+      showWeekNotes('Nichts geplant.', notes);
+      return;
+    }
+    if (await saveDays([...extraRows, { day, ...EMPTY_DAY, recipe_id: assignments[day] }])) {
+      if (notes.length > 0) showWeekNotes('Neu gewürfelt – mit Hinweisen:', notes);
+    }
+  } catch (error) {
+    console.error(error);
+    weekMessage.textContent = 'Neu würfeln fehlgeschlagen: ' + saveErrorText(error);
+  }
+}
+
+// Menü für einen Tag ("⋯" oder Antippen eines leeren Tages)
+async function editDay(day) {
+  if (isOffline) return;
+  const entry = planEntries[day];
+  const recipe = entry && !entry.is_day_off ? recipeById(entry.recipe_id) : null;
+
+  const actions = [];
+  if (recipe) actions.push({ label: '📖 Rezept ansehen', value: 'view' });
+  actions.push({ label: recipe ? '🔍 Anderes Rezept wählen' : '🔍 Rezept auswählen', value: 'pick' });
+  if (!entry?.is_locked) actions.push({ label: recipe ? '🎲 Neu würfeln' : '🎲 Zufällig planen', value: 'reroll' });
+  if (recipe) {
+    actions.push({ label: entry.is_locked ? '🔓 Nicht mehr festhalten' : '🔒 Festhalten', value: 'lock' });
+    actions.push({ label: entry.is_purchased ? '🛒 Doch nicht gekauft' : '🛒 Zutaten gekauft', value: 'purchased' });
+    actions.push({ label: '⇄ Mit anderem Tag tauschen', value: 'swap' });
+  }
+  actions.push(entry?.is_day_off ? { label: '🍳 Doch kochen', value: 'cook' } : { label: '🍽 Tag frei (nicht kochen)', value: 'off' });
+  if (recipe) actions.push({ label: 'Gericht entfernen', value: 'remove', danger: true });
+
+  const subtitle = recipe ? recipe.name : entry?.is_day_off ? 'Frei' : 'Noch nichts geplant';
+  const choice = await openSheet({ title: formatDayLong(day), subtitle, actions });
+  if (choice === null) return;
+
+  if (choice === 'view') {
+    location.hash = '#/recipe/' + recipe.id;
+  } else if (choice === 'pick') {
+    const picked = await openRecipePicker({ title: formatDayLong(day), recipes, imageUrls });
+    if (!picked || picked.id === recipe?.id) return;
+    const extra = await askWherePurchasedGoes(day);
+    if (extra === null) return;
+    await saveDays([...extra, { day, ...EMPTY_DAY, recipe_id: picked.id }]);
+  } else if (choice === 'reroll') {
+    const extra = await askWherePurchasedGoes(day);
+    if (extra === null) return;
+    await rerollDay(day, extra);
+  } else if (choice === 'lock') {
+    await saveDays([{ day, ...dayFields(entry), is_locked: !entry.is_locked }]);
+  } else if (choice === 'purchased') {
+    await saveDays([{ day, ...dayFields(entry), is_purchased: !entry.is_purchased }]);
+  } else if (choice === 'swap') {
+    const others = Array.from({ length: 7 }, (_, i) => toIsoDate(addDays(weekMonday, i))).filter((d) => d !== day);
+    const target = await openSheet({
+      title: 'Tauschen mit …',
+      subtitle: `„${recipe.name}“ kommt auf den gewählten Tag, dessen Gericht hierher.`,
+      actions: others.map((d) => {
+        const other = planEntries[d];
+        const otherRecipe = other && !other.is_day_off ? recipeById(other.recipe_id) : null;
+        const what = otherRecipe ? otherRecipe.name : other?.is_day_off ? 'frei' : 'leer – verschieben';
+        return { label: `${formatDayShort(d)} · ${what}`, value: d };
+      }),
+    });
+    if (target === null) return;
+    await saveDays([{ day, ...dayFields(planEntries[target]) }, { day: target, ...dayFields(entry) }]);
+  } else if (choice === 'off') {
+    const extra = await askWherePurchasedGoes(day);
+    if (extra === null) return;
+    await saveDays([...extra, { day, ...EMPTY_DAY, is_day_off: true }]);
+  } else if (choice === 'cook') {
+    await saveDays([{ day, ...EMPTY_DAY }]);
+  } else if (choice === 'remove') {
+    const extra = await askWherePurchasedGoes(day);
+    if (extra === null) return;
+    await saveDays([...extra, { day, ...EMPTY_DAY }]);
+  }
+}
+
+// Nach dem Einkauf: alle geplanten Tage ab heute als gekauft markieren
+purchaseWeekButton.addEventListener('click', async () => {
+  const rows = upcomingPlannedDays()
+    .filter((day) => !planEntries[day].is_purchased)
+    .map((day) => ({ day, ...dayFields(planEntries[day]), is_purchased: true }));
+  if (rows.length > 0 && (await saveDays(rows))) showWeekNotes(`🛒 ${rows.length} ${rows.length === 1 ? 'Tag' : 'Tage'} als gekauft markiert.`, [], false);
+});
 
 // showLoading: Tage kurz abblenden (nur beim Wechsel der Woche, nicht bei jeder Aktualisierung)
 async function loadWeek(monday, showLoading) {
@@ -390,10 +567,7 @@ async function loadWeek(monday, showLoading) {
   }
   weekDays.classList.remove('is-loading');
   // Nur neu zeichnen, wenn noch dieselbe Woche angezeigt wird
-  if (toIsoDate(monday) === toIsoDate(weekMonday)) {
-    renderWeek(weekDays, monday, planEntries, recipes, imageUrls);
-    updatePlanButtons();
-  }
+  if (toIsoDate(monday) === toIsoDate(weekMonday)) drawWeek();
 }
 
 // ---- Regeln für den Wochenplan ----
