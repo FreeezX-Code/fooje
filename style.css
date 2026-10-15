@@ -23,6 +23,7 @@
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 6px 20px rgba(0, 0, 0, 0.07);
   --shadow-strong: 0 8px 24px rgba(0, 0, 0, 0.25);
 
+  --tab-bar-height: 64px;
   --radius: 20px;
   --radius-small: 12px;
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -168,6 +169,72 @@ h3 {
   max-width: 640px;
   margin: 0 auto;
   padding: 8px calc(16px + var(--safe-right)) calc(24px + var(--safe-bottom)) calc(16px + var(--safe-left));
+}
+
+/* ---------- Leiste unten: Rezepte | Wochenplan ---------- */
+
+.tab-bar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 6px calc(12px + var(--safe-right)) calc(6px + var(--safe-bottom)) calc(12px + var(--safe-left));
+  background: var(--color-background-translucent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid var(--color-border);
+}
+
+.tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 52px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.tab-icon {
+  box-sizing: content-box;
+  width: 24px;
+  height: 24px;
+  padding: 4px 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  border-radius: 999px;
+  transition: background-color 0.25s var(--ease), transform 0.15s var(--ease);
+}
+
+.tab[aria-current="page"] {
+  color: var(--color-text);
+}
+
+.tab[aria-current="page"] .tab-icon {
+  background: var(--color-soft);
+}
+
+.tab:active .tab-icon {
+  transform: scale(0.9);
+}
+
+/* Platz für die Leiste lassen; der "+"-Knopf sitzt darüber */
+body.has-tab-bar .app-main {
+  padding-bottom: calc(24px + var(--tab-bar-height) + var(--safe-bottom));
+}
+
+body.has-tab-bar .fab {
+  bottom: calc(var(--tab-bar-height) + 16px + var(--safe-bottom));
 }
 
 /* ---------- Schaltflächen ---------- */

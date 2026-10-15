@@ -41,6 +41,10 @@ const exportButton = document.getElementById('export-button');
 const importInput = document.getElementById('import-input');
 const backupMessage = document.getElementById('backup-message');
 
+const weekView = document.getElementById('week-view');
+const pageTitle = document.getElementById('page-title');
+const tabBar = document.getElementById('tab-bar');
+
 const formView = document.getElementById('form-view');
 const recipeForm = document.getElementById('recipe-form');
 const formError = document.getElementById('form-error');
@@ -318,7 +322,9 @@ function renderRoute() {
   const findRecipe = (match) => (match ? recipes.find((r) => r.id === match[1]) : null);
 
   let view = listView;
-  if (isOffline && (hash === '#/new' || editMatch)) {
+  if (hash === '#/week') {
+    view = weekView;
+  } else if (isOffline && (hash === '#/new' || editMatch)) {
     // Offline kann nichts gespeichert werden, also auch kein Formular öffnen
     view = listView;
   } else if (hash === '#/new') {
@@ -336,8 +342,19 @@ function renderRoute() {
     view = detailView;
   }
 
-  for (const v of [listView, detailView, formView]) v.hidden = v !== view;
+  for (const v of [listView, detailView, formView, weekView]) v.hidden = v !== view;
   formError.textContent = '';
+
+  // Leiste unten: aktiven Reiter markieren, Überschrift anpassen.
+  // Im Formular ausblenden, dort stehen unten "Speichern/Abbrechen".
+  const activeTab = view === weekView ? 'week' : 'recipes';
+  for (const tab of tabBar.querySelectorAll('.tab')) {
+    if (tab.dataset.tab === activeTab) tab.setAttribute('aria-current', 'page');
+    else tab.removeAttribute('aria-current');
+  }
+  pageTitle.textContent = activeTab === 'week' ? 'Wochenplan' : 'Rezepte';
+  tabBar.hidden = view === formView;
+  document.body.classList.toggle('has-tab-bar', view !== formView);
 
   // Neue Ansicht sanft einblenden (Klasse kurz entfernen, damit die Animation neu startet)
   if (view !== currentView) {

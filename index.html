@@ -25,7 +25,7 @@
 </head>
 <body>
   <header class="app-header">
-    <h1>Rezepte</h1>
+    <h1 id="page-title">Rezepte</h1>
   </header>
 
   <main class="app-main">
@@ -96,6 +96,10 @@
       </div>
 
       <article id="detail-view" class="recipe-detail" hidden></article>
+
+      <div id="week-view" hidden>
+        <p class="muted">Hier entsteht der Wochenplan.</p>
+      </div>
 
       <div id="form-view" hidden>
         <h2 id="form-title" class="form-title">Neues Rezept</h2>
@@ -186,6 +190,26 @@
           </div>
         </form>
       </div>
+
+      <!-- Leiste unten: zwischen Rezepten und Wochenplan wechseln -->
+      <nav id="tab-bar" class="tab-bar" aria-label="Hauptbereiche">
+        <a href="#" class="tab" data-tab="recipes">
+          <svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5v-15Z" />
+            <path d="M5 19.5A1.5 1.5 0 0 0 6.5 21H19v-3" />
+            <path d="M9 7.5h6M9 11h4" />
+          </svg>
+          <span>Rezepte</span>
+        </a>
+        <a href="#/week" class="tab" data-tab="week">
+          <svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3.5" y="5" width="17" height="15" rx="2.5" />
+            <path d="M3.5 10h17M8 3v4M16 3v4" />
+            <path d="M8 14h2M14 14h2M8 17h2" />
+          </svg>
+          <span>Wochenplan</span>
+        </a>
+      </nav>
     </section>
   </main>
 </body>
