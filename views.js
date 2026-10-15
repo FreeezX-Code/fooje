@@ -20,7 +20,7 @@ export const SIDE_DISH_LABELS = {
 };
 
 // Platzhalter, solange ein Rezept kein Bild hat
-const MAIN_COMPONENT_ICONS = {
+export const MAIN_COMPONENT_ICONS = {
   meat: '🥩',
   poultry: '🍗',
   fish: '🐟',

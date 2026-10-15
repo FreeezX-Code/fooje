@@ -2,11 +2,12 @@
 import {
   onAuthChange, signIn, signOut, hasStoredSession, getCurrentSession,
   fetchRecipes, createRecipe, updateRecipe, deleteRecipe, insertRecipes,
-  subscribeToRecipeChanges, unsubscribeFromRecipeChanges,
+  subscribeToRecipeChanges, unsubscribeFromRecipeChanges, fetchPlanDays,
   uploadImage, deleteImage, getImageUrls,
 } from './db.js';
 import { saveRecipeCache, readRecipeCache, clearRecipeCache } from './offline.js';
 import { createBackupFile, shareOrDownload, parseBackup } from './backup.js';
+import { renderWeek, startOfWeek, addDays, toIsoDate, parseIsoDate, isoWeekNumber, weekRangeLabel } from './week.js';
 import { renderRecipeList, renderSkeletonList, renderRecipeDetail, renderChips, MAIN_COMPONENT_LABELS } from './views.js';
 import { fillRecipeForm, readRecipeForm, readImageChoice } from './recipe-form.js';
 import { collectTags, filterRecipes, isFilterActive } from './filter.js';
@@ -42,6 +43,13 @@ const importInput = document.getElementById('import-input');
 const backupMessage = document.getElementById('backup-message');
 
 const weekView = document.getElementById('week-view');
+const weekNumber = document.getElementById('week-number');
+const weekRange = document.getElementById('week-range');
+const weekPrev = document.getElementById('week-prev');
+const weekNext = document.getElementById('week-next');
+const weekToday = document.getElementById('week-today');
+const weekMessage = document.getElementById('week-message');
+const weekDays = document.getElementById('week-days');
 const pageTitle = document.getElementById('page-title');
 const tabBar = document.getElementById('tab-bar');
 
@@ -58,6 +66,8 @@ let currentUserId = null;
 let editingId = null; // id des Rezepts im Formular, null = neues Rezept
 let isOffline = false; // true = keine Verbindung, es wird der gespeicherte Stand gezeigt
 let animateList = false; // true = Karten beim nächsten Anzeigen einschweben lassen
+let planEntries = {}; // geladene Tage des Wochenplans: { "2026-10-19": Eintrag, … }
+let weekMonday = startOfWeek(new Date()); // Montag der angezeigten Woche
 let currentView = null; // gerade sichtbare Ansicht (für die Einblend-Animation)
 
 // Aktuelle Suche/Filter der Liste (bleiben erhalten, wenn man in ein Rezept und zurück geht)
@@ -102,6 +112,7 @@ function showView(session) {
   recipes = [];
   imageUrls = {};
   imageUrlsLoadedAt = 0;
+  planEntries = {};
   clearRecipeCache();
   setOffline(false);
   loadingView.hidden = true;
@@ -243,6 +254,46 @@ async function loadRecipes() {
   }
 }
 
+// ---- Wochenplan ----
+
+// Zeigt die Woche ab "monday" sofort mit dem, was schon geladen ist, und lädt sie dann frisch
+function showWeek(monday) {
+  const isNewWeek = toIsoDate(monday) !== toIsoDate(weekMonday);
+  weekMonday = monday;
+  weekNumber.textContent = 'KW ' + isoWeekNumber(monday);
+  weekRange.textContent = weekRangeLabel(monday);
+  weekToday.hidden = toIsoDate(monday) === toIsoDate(startOfWeek(new Date()));
+  renderWeek(weekDays, monday, planEntries, recipes, imageUrls);
+  loadWeek(monday, isNewWeek);
+}
+
+// showLoading: Tage kurz abblenden (nur beim Wechsel der Woche, nicht bei jeder Aktualisierung)
+async function loadWeek(monday, showLoading) {
+  if (showLoading) weekDays.classList.add('is-loading');
+  weekMessage.textContent = '';
+  try {
+    const from = toIsoDate(monday);
+    const to = toIsoDate(addDays(monday, 6));
+    const days = await fetchPlanDays(from, to);
+    // Die Tage dieser Woche komplett ersetzen, damit auch gelöschte Einträge verschwinden
+    for (const iso of Object.keys(planEntries)) {
+      if (iso >= from && iso <= to) delete planEntries[iso];
+    }
+    for (const day of days) planEntries[day.day] = day;
+  } catch (error) {
+    console.error(error);
+    weekMessage.textContent = 'Wochenplan konnte nicht geladen werden. Bitte Internet prüfen.';
+  }
+  weekDays.classList.remove('is-loading');
+  // Nur neu zeichnen, wenn noch dieselbe Woche angezeigt wird
+  if (toIsoDate(monday) === toIsoDate(weekMonday)) renderWeek(weekDays, monday, planEntries, recipes, imageUrls);
+}
+
+// ‹ und ›: replace, damit "Zurück" den Wochenplan verlässt statt durch alle Wochen zu blättern
+weekPrev.addEventListener('click', () => location.replace('#/week/' + toIsoDate(addDays(weekMonday, -7))));
+weekNext.addEventListener('click', () => location.replace('#/week/' + toIsoDate(addDays(weekMonday, 7))));
+weekToday.addEventListener('click', () => location.replace('#/week'));
+
 // ---- Live-Abgleich: Änderungen vom anderen Handy ----
 
 async function handleRemoteUpsert(recipe) {
@@ -322,7 +373,10 @@ function renderRoute() {
   const findRecipe = (match) => (match ? recipes.find((r) => r.id === match[1]) : null);
 
   let view = listView;
-  if (hash === '#/week') {
+  const weekMatch = hash.match(/^#\/week(?:\/(\d{4}-\d{2}-\d{2}))?$/);
+  if (weekMatch) {
+    // "#/week" = aktuelle Woche, "#/week/2026-10-26" = Woche mit diesem Tag
+    showWeek(startOfWeek(weekMatch[1] ? parseIsoDate(weekMatch[1]) : new Date()));
     view = weekView;
   } else if (isOffline && (hash === '#/new' || editMatch)) {
     // Offline kann nichts gespeichert werden, also auch kein Formular öffnen

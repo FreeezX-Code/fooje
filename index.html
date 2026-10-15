@@ -98,7 +98,17 @@
       <article id="detail-view" class="recipe-detail" hidden></article>
 
       <div id="week-view" hidden>
-        <p class="muted">Hier entsteht der Wochenplan.</p>
+        <div class="week-header">
+          <button id="week-prev" type="button" class="week-nav" aria-label="Vorherige Woche">‹</button>
+          <div class="week-title">
+            <strong id="week-number"></strong>
+            <span id="week-range" class="muted"></span>
+          </div>
+          <button id="week-next" type="button" class="week-nav" aria-label="Nächste Woche">›</button>
+        </div>
+        <button id="week-today" type="button" class="link-button week-today" hidden>Zur aktuellen Woche</button>
+        <p id="week-message" class="muted list-message"></p>
+        <ul id="week-days" class="week-days"></ul>
       </div>
 
       <div id="form-view" hidden>

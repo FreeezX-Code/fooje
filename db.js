@@ -71,6 +71,15 @@ export async function deleteRecipe(id) {
   if (error) throw error;
 }
 
+// ---- Wochenplan ----
+
+// Alle geplanten Tage von "from" bis "to" (jeweils "JJJJ-MM-TT", einschließlich)
+export async function fetchPlanDays(from, to) {
+  const { data, error } = await supabase.from('meal_plan_days').select('*').gte('day', from).lte('day', to);
+  if (error) throw error;
+  return data;
+}
+
 // ---- Live-Abgleich (Supabase Realtime) ----
 
 let recipeChannel = null;
