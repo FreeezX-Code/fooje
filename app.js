@@ -7,7 +7,7 @@ import {
 } from './db.js';
 import { saveRecipeCache, readRecipeCache, clearRecipeCache } from './offline.js';
 import { createBackupFile, shareOrDownload, parseBackup } from './backup.js';
-import { renderRecipeList, renderRecipeDetail, renderChips, MAIN_COMPONENT_LABELS } from './views.js';
+import { renderRecipeList, renderSkeletonList, renderRecipeDetail, renderChips, MAIN_COMPONENT_LABELS } from './views.js';
 import { fillRecipeForm, readRecipeForm, readImageChoice } from './recipe-form.js';
 import { collectTags, filterRecipes, isFilterActive } from './filter.js';
 
@@ -53,6 +53,8 @@ let imageUrlsLoadedAt = 0; // Zeitpunkt, ab dem die Links gelten (sie laufen nac
 let currentUserId = null;
 let editingId = null; // id des Rezepts im Formular, null = neues Rezept
 let isOffline = false; // true = keine Verbindung, es wird der gespeicherte Stand gezeigt
+let animateList = false; // true = Karten beim nächsten Anzeigen einschweben lassen
+let currentView = null; // gerade sichtbare Ansicht (für die Einblend-Animation)
 
 // Aktuelle Suche/Filter der Liste (bleiben erhalten, wenn man in ein Rezept und zurück geht)
 const filter = { query: '', mainComponent: null, tags: new Set() };
@@ -115,6 +117,7 @@ function setOffline(offline, savedAt = null) {
 
 // Zeigt den auf dem Handy gespeicherten Stand an
 function useCache(cache) {
+  if (recipes.length === 0) animateList = true;
   recipes = cache.recipes;
   imageUrls = cache.imageUrls ?? {};
   sortRecipes();
@@ -152,7 +155,8 @@ function showList() {
   if (recipes.length === 0) listMessage.textContent = 'Noch keine Rezepte vorhanden.';
   else if (visible.length === 0) listMessage.textContent = 'Keine passenden Rezepte.';
   else listMessage.textContent = '';
-  renderRecipeList(recipeList, visible, imageUrls);
+  renderRecipeList(recipeList, visible, imageUrls, animateList);
+  animateList = false;
 }
 
 // Hauptkomponente: nur eine gleichzeitig, nochmal antippen hebt die Auswahl auf
@@ -199,7 +203,12 @@ async function loadImageUrls(paths) {
 
 // Lädt die Rezepte vom Server. Klappt das nicht, wird der gespeicherte Stand gezeigt.
 async function loadRecipes() {
-  if (!isOffline && recipes.length === 0) listMessage.textContent = 'Rezepte werden geladen …';
+  // Erstes Laden: schimmernde Platzhalter zeigen, danach die Karten einschweben lassen
+  if (!isOffline && recipes.length === 0) {
+    listMessage.textContent = '';
+    renderSkeletonList(recipeList);
+    animateList = true;
+  }
   try {
     const loaded = await fetchRecipes();
     recipes = loaded;
@@ -329,6 +338,14 @@ function renderRoute() {
 
   for (const v of [listView, detailView, formView]) v.hidden = v !== view;
   formError.textContent = '';
+
+  // Neue Ansicht sanft einblenden (Klasse kurz entfernen, damit die Animation neu startet)
+  if (view !== currentView) {
+    view.classList.remove('view-enter');
+    void view.offsetWidth;
+    view.classList.add('view-enter');
+    currentView = view;
+  }
 }
 
 // Verständliche Fehlermeldung für Speichern/Löschen

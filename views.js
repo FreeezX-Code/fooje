@@ -88,10 +88,12 @@ export function renderChips(container, options, selected, onToggle) {
 }
 
 // imageUrls = { Bildpfad: Link } für alle Rezepte mit Bild
-export function renderRecipeList(container, recipes, imageUrls) {
+// animate = true: Karten schweben nacheinander ein (nur beim ersten Anzeigen, nicht bei jeder Suche)
+export function renderRecipeList(container, recipes, imageUrls, animate = false) {
   container.replaceChildren();
-  for (const recipe of recipes) {
-    // Karte: Foto in voller Breite, darunter Name (+ ★) und Eckdaten
+  container.classList.toggle('animate-in', animate);
+  recipes.forEach((recipe, index) => {
+    // Karte: Foto (oder Farbkachel), darauf unten Name (+ ★) und Eckdaten
     const link = el('a', 'recipe-card');
     link.href = '#/recipe/' + recipe.id;
 
@@ -99,13 +101,25 @@ export function renderRecipeList(container, recipes, imageUrls) {
     title.append(el('span', 'recipe-card-name', recipe.name));
     if (recipe.is_favorite) title.append(el('span', 'favorite', '★'));
 
-    const body = el('div', 'recipe-card-body');
-    body.append(title, el('span', 'recipe-card-meta', metaLine(recipe)));
+    const overlay = el('div', 'recipe-card-overlay');
+    overlay.append(title, el('span', 'recipe-card-meta', metaLine(recipe)));
 
-    link.append(recipeImage(recipe, imageUrls[recipe.image_path], 'recipe-card-image'), body);
+    link.append(recipeImage(recipe, imageUrls[recipe.image_path], 'recipe-card-image'), overlay);
 
     const item = el('li');
+    item.style.setProperty('--i', Math.min(index, 8)); // Verzögerung fürs Einschweben
     item.append(link);
+    container.append(item);
+  });
+}
+
+// Schimmernde Platzhalter-Karten, solange die Rezepte laden
+export function renderSkeletonList(container) {
+  container.replaceChildren();
+  container.classList.remove('animate-in');
+  for (let i = 0; i < 3; i++) {
+    const item = el('li');
+    item.append(el('div', 'skeleton-card'));
     container.append(item);
   }
 }

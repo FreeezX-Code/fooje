@@ -1,30 +1,57 @@
 /* ==========================================================================
-   Gestaltung: ruhig, hell, neutral – Farbe (Grün) nur als Akzent.
-   Alle Farben und Abstände stehen hier oben, damit sie leicht anzupassen sind.
+   Gestaltung in Anthrazit-Tönen. Hell oder dunkel – je nachdem, wie das Handy
+   eingestellt ist (Dunkelmodus). Alle Farben stehen hier oben als Variablen.
    ========================================================================== */
 
 :root {
-  color-scheme: light;
+  color-scheme: light dark;
 
-  --color-background: #f6f6f4;
+  /* Helle Variante */
+  --color-background: #f3f3f1;
+  --color-background-translucent: rgba(243, 243, 241, 0.86);
   --color-surface: #ffffff;
-  --color-text: #1d1d1b;
-  --color-muted: #6b6b66;
-  --color-border: #e4e4df;
-  --color-accent: #3d7a55;
-  --color-accent-soft: #e6f0e9;
+  --color-field: #efefec;
+  --color-text: #1f2023;
+  --color-muted: #6b6c70;
+  --color-border: #e2e2de;
+  --color-primary: #2b2d31;      /* Anthrazit: Knöpfe, aktive Filter */
+  --color-on-primary: #ffffff;   /* Schrift auf Anthrazit */
+  --color-soft: #e7e7e4;         /* zarte Flächen, z. B. Tags, Schrittnummern */
   --color-error: #b3261e;
-  --color-favorite: #e0a526;
+  --color-favorite: #f2b632;
+  --color-banner: #fff3d6;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 6px 20px rgba(0, 0, 0, 0.07);
+  --shadow-strong: 0 8px 24px rgba(0, 0, 0, 0.25);
 
-  --radius: 16px;
-  --radius-small: 10px;
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.06);
+  --radius: 20px;
+  --radius-small: 12px;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
 
   /* Abstand zu Notch, abgerundeten Ecken und Home-Leiste (iPhone) */
   --safe-top: env(safe-area-inset-top);
   --safe-right: env(safe-area-inset-right);
   --safe-bottom: env(safe-area-inset-bottom);
   --safe-left: env(safe-area-inset-left);
+}
+
+/* Dunkle Variante: wird automatisch genommen, wenn das Handy im Dunkelmodus ist */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-background: #18191c;
+    --color-background-translucent: rgba(24, 25, 28, 0.86);
+    --color-surface: #232529;
+    --color-field: #2c2f34;
+    --color-text: #f1f1ef;
+    --color-muted: #9fa0a4;
+    --color-border: #34363b;
+    --color-primary: #f1f1ef;
+    --color-on-primary: #1f2023;
+    --color-soft: #33363b;
+    --color-error: #ff8a80;
+    --color-banner: #3d3522;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 20px rgba(0, 0, 0, 0.3);
+    --shadow-strong: 0 8px 24px rgba(0, 0, 0, 0.6);
+  }
 }
 
 * {
@@ -64,24 +91,77 @@ h3 {
   display: none;
 }
 
+/* ---------- Animationen ---------- */
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes zoom-in {
+  from { transform: scale(1.06); }
+  to { transform: none; }
+}
+
+@keyframes pop-in {
+  from { opacity: 0; transform: scale(0.6); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to { background-position: 200% 0; }
+}
+
+/* Neue Ansicht blendet sanft ein (nur der Inhalt, nicht der festgeheftete "+"-Knopf) */
+.view-enter > :not(.fab) {
+  animation: fade-up 0.35s var(--ease) both;
+}
+
+/* Foto in den Details: einblenden und dabei leicht hineinzoomen */
+.view-enter > .recipe-hero {
+  animation: fade-in 0.35s both, zoom-in 0.7s var(--ease) both;
+}
+
+/* Karten schweben beim ersten Anzeigen nacheinander ein */
+.recipe-list.animate-in > li {
+  animation: fade-up 0.45s var(--ease) both;
+  animation-delay: calc(var(--i) * 60ms);
+}
+
+/* Wer am Handy "Bewegung reduzieren" eingestellt hat, bekommt keine Animationen */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
 /* ---------- Kopfzeile ---------- */
 
 .app-header {
   position: sticky;
   top: 0;
   z-index: 10;
-  padding: calc(12px + var(--safe-top)) calc(20px + var(--safe-right)) 12px calc(20px + var(--safe-left));
-  background: rgba(246, 246, 244, 0.92);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  padding: calc(14px + var(--safe-top)) calc(20px + var(--safe-right)) 10px calc(20px + var(--safe-left));
+  background: var(--color-background-translucent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 .app-header h1 {
   max-width: 640px;
   margin: 0 auto;
-  font-size: 1.75rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
 }
 
 .app-main {
@@ -102,13 +182,19 @@ h3 {
   font-weight: 600;
   text-align: center;
   text-decoration: none;
-  border-radius: 14px;
+  border-radius: 16px;
   cursor: pointer;
+  transition: transform 0.15s var(--ease), opacity 0.15s;
+}
+
+.button-primary:active,
+.button-secondary:active {
+  transform: scale(0.97);
 }
 
 .button-primary {
-  color: #ffffff;
-  background: var(--color-accent);
+  color: var(--color-on-primary);
+  background: var(--color-primary);
   border: none;
 }
 
@@ -127,7 +213,7 @@ h3 {
   min-height: 44px;
   padding: 0;
   font: inherit;
-  color: var(--color-accent);
+  color: var(--color-text);
   text-decoration: underline;
   text-underline-offset: 3px;
   background: none;
@@ -149,20 +235,22 @@ h3 {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 60px;
-  height: 60px;
-  font-size: 2rem;
+  width: 62px;
+  height: 62px;
+  font-size: 2.1rem;
   font-weight: 300;
   line-height: 1;
-  color: #ffffff;
+  color: var(--color-on-primary);
   text-decoration: none;
-  background: var(--color-accent);
+  background: var(--color-primary);
   border-radius: 50%;
-  box-shadow: 0 4px 14px rgba(61, 122, 85, 0.4);
+  box-shadow: var(--shadow-strong);
+  animation: pop-in 0.4s var(--ease) 0.2s both;
+  transition: transform 0.15s var(--ease);
 }
 
 .fab:active {
-  transform: scale(0.95);
+  transform: scale(0.9) rotate(90deg);
 }
 
 /* ---------- Formularfelder ---------- */
@@ -177,7 +265,7 @@ h3 {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 600;
   color: var(--color-muted);
 }
@@ -194,9 +282,10 @@ h3 {
   font-size: 17px;
   font-weight: normal;
   color: var(--color-text);
-  background: var(--color-background);
+  background-color: var(--color-field);
   border: 1px solid transparent;
   border-radius: var(--radius-small);
+  transition: border-color 0.2s, background-color 0.2s;
   -webkit-appearance: none;
   appearance: none;
 }
@@ -220,7 +309,7 @@ h3 {
 .search-input:focus {
   outline: none;
   background-color: var(--color-surface);
-  border-color: var(--color-accent);
+  border-color: var(--color-primary);
 }
 
 .form-row {
@@ -243,7 +332,7 @@ h3 {
   min-height: 0;
   height: 24px;
   padding: 0;
-  accent-color: var(--color-accent);
+  accent-color: var(--color-primary);
   -webkit-appearance: checkbox;
   appearance: checkbox;
 }
@@ -253,15 +342,26 @@ h3 {
 .login {
   padding-top: 24px;
   text-align: center;
+  animation: fade-up 0.5s var(--ease) both;
 }
 
 .login-logo {
-  font-size: 3.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 88px;
+  height: 88px;
+  font-size: 3rem;
+  background: var(--color-surface);
+  border-radius: 28px;
+  box-shadow: var(--shadow);
+  animation: pop-in 0.5s var(--ease) 0.1s both;
 }
 
 .login h2 {
-  margin: 8px 0 4px;
-  font-size: 1.5rem;
+  margin: 16px 0 4px;
+  font-size: 1.6rem;
+  letter-spacing: -0.02em;
 }
 
 .login .form {
@@ -278,8 +378,9 @@ h3 {
 .offline-banner {
   padding: 14px;
   margin-bottom: 16px;
-  background: #fff6e0;
+  background: var(--color-banner);
   border-radius: var(--radius);
+  animation: fade-in 0.3s both;
 }
 
 .offline-banner p {
@@ -299,14 +400,14 @@ h3 {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin-bottom: 16px;
+  margin-bottom: 18px;
 }
 
 .search-input {
-  padding-left: 40px;
+  padding-left: 42px;
   background-color: var(--color-surface);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' fill='none' stroke='%236b6b66' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='8' cy='8' r='6'/%3E%3Cpath d='m17 17-4.5-4.5'/%3E%3C/svg%3E");
-  background-position: 14px 50%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='8' cy='8' r='6'/%3E%3Cpath d='m17 17-4.5-4.5'/%3E%3C/svg%3E");
+  background-position: 15px 50%;
   background-repeat: no-repeat;
   box-shadow: var(--shadow);
 }
@@ -316,7 +417,7 @@ h3 {
   display: flex;
   gap: 8px;
   margin: 0 calc(-16px - var(--safe-right)) 0 calc(-16px - var(--safe-left));
-  padding: 2px calc(16px + var(--safe-right)) 2px calc(16px + var(--safe-left));
+  padding: 2px calc(16px + var(--safe-right)) 4px calc(16px + var(--safe-left));
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -328,7 +429,7 @@ h3 {
 .chip {
   flex-shrink: 0;
   min-height: 38px;
-  padding: 6px 14px;
+  padding: 6px 15px;
   font: inherit;
   font-size: 0.95rem;
   color: var(--color-text);
@@ -337,18 +438,23 @@ h3 {
   border: 1px solid var(--color-border);
   border-radius: 999px;
   cursor: pointer;
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s, transform 0.15s var(--ease);
+}
+
+.chip:active {
+  transform: scale(0.94);
 }
 
 .chip[aria-pressed="true"] {
-  color: #ffffff;
-  background: var(--color-accent);
-  border-color: var(--color-accent);
+  color: var(--color-on-primary);
+  background: var(--color-primary);
+  border-color: var(--color-primary);
 }
 
-/* ---------- Rezeptliste: große Bildkarten ---------- */
+/* ---------- Rezeptliste: Bildkarten mit Text auf dem Foto ---------- */
 
 #list-view {
-  padding-bottom: 72px; /* Platz für den "+"-Knopf */
+  padding-bottom: 80px; /* Platz für den "+"-Knopf */
 }
 
 .list-message:empty {
@@ -365,37 +471,43 @@ h3 {
 }
 
 .recipe-card {
+  position: relative;
   display: block;
   overflow: hidden;
-  color: inherit;
+  color: #ffffff;
   text-decoration: none;
   background: var(--color-surface);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
+  transition: transform 0.2s var(--ease);
 }
 
 .recipe-card:active {
-  transform: scale(0.99);
+  transform: scale(0.97);
 }
 
 .recipe-card-image {
   display: flex;
   width: 100%;
-  aspect-ratio: 16 / 9;
-  font-size: 3.5rem;
+  aspect-ratio: 16 / 10;
 }
 
-/* Ohne Foto: flacherer Platzhalter, damit mehr Rezepte auf den Bildschirm passen */
+/* Ohne Foto: flachere Farbkachel, damit mehr Rezepte auf den Bildschirm passen */
 .recipe-card-image.recipe-placeholder {
-  aspect-ratio: 3 / 1;
-  font-size: 2.5rem;
+  aspect-ratio: 5 / 2;
 }
 
-.recipe-card-body {
+/* Dunkler Verlauf unten, darauf Name und Eckdaten in Weiß */
+.recipe-card-overlay {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 12px 16px 14px;
+  padding: 48px 18px 14px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.78), rgba(0, 0, 0, 0.35) 55%, rgba(0, 0, 0, 0));
 }
 
 .recipe-card-title {
@@ -406,37 +518,51 @@ h3 {
 }
 
 .recipe-card-name {
-  font-size: 1.1rem;
-  font-weight: 600;
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.3);
   overflow-wrap: anywhere;
 }
 
 .recipe-card-meta {
   font-size: 0.9rem;
-  color: var(--color-muted);
+  opacity: 0.88;
 }
 
 .favorite {
   color: var(--color-favorite);
 }
 
-/* Bild bzw. Platzhalter (Symbol auf zartem Farbton je Hauptkomponente) */
+/* Bild bzw. Platzhalter */
 .recipe-image {
   object-fit: cover;
-  background: var(--color-border);
+  background: var(--color-soft);
 }
 
+/* Farbkachel je Hauptkomponente, Symbol oben rechts */
 .recipe-placeholder {
-  align-items: center;
-  justify-content: center;
-  background: #eeeeea;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 14px 18px;
+  font-size: 2.6rem;
+  background: linear-gradient(135deg, #5c5f66, #3a3c41);
 }
 
-.recipe-placeholder[data-main="meat"] { background: #f5e4de; }
-.recipe-placeholder[data-main="poultry"] { background: #f6ecd8; }
-.recipe-placeholder[data-main="fish"] { background: #dfeaf2; }
-.recipe-placeholder[data-main="vegetarian"] { background: #e7efdc; }
-.recipe-placeholder[data-main="vegan"] { background: #ddeee3; }
+.recipe-placeholder[data-main="meat"] { background: linear-gradient(135deg, #c0694f, #8a4434); }
+.recipe-placeholder[data-main="poultry"] { background: linear-gradient(135deg, #d39a43, #a26c27); }
+.recipe-placeholder[data-main="fish"] { background: linear-gradient(135deg, #4f86ab, #2e5c7c); }
+.recipe-placeholder[data-main="vegetarian"] { background: linear-gradient(135deg, #7aa356, #527634); }
+.recipe-placeholder[data-main="vegan"] { background: linear-gradient(135deg, #3f9370, #29684e); }
+
+/* Schimmernde Platzhalter, solange die Rezepte laden */
+.skeleton-card {
+  aspect-ratio: 16 / 10;
+  border-radius: var(--radius);
+  background: linear-gradient(90deg, var(--color-soft) 25%, var(--color-surface) 50%, var(--color-soft) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
 
 /* ---------- Konto & Backup (aufklappbar) ---------- */
 
@@ -466,13 +592,20 @@ h3 {
 .more-details summary::after {
   content: "›";
   float: right;
+  font-size: 1.3rem;
+  line-height: 1;
   color: var(--color-muted);
-  transition: transform 0.2s;
+  transition: transform 0.25s var(--ease);
 }
 
 .settings[open] summary::after,
 .more-details[open] summary::after {
   transform: rotate(90deg);
+}
+
+.settings[open] .settings-body,
+.more-details[open] .more-details-body {
+  animation: fade-up 0.3s var(--ease) both;
 }
 
 .settings-body {
@@ -495,25 +628,36 @@ h3 {
 .back-link {
   display: inline-flex;
   align-items: center;
-  min-height: 44px;
-  margin-bottom: 4px;
+  min-height: 40px;
+  padding: 0 14px 0 10px;
+  margin-bottom: 10px;
   font-weight: 600;
-  color: var(--color-accent);
+  color: var(--color-text);
   text-decoration: none;
+  background: var(--color-surface);
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+  transition: transform 0.15s var(--ease);
+}
+
+.back-link:active {
+  transform: scale(0.95);
 }
 
 .recipe-hero {
   display: flex;
   width: 100%;
   aspect-ratio: 4 / 3;
-  font-size: 5rem;
+  font-size: 4.5rem;
   border-radius: var(--radius);
+  box-shadow: var(--shadow);
 }
 
 .recipe-title {
   margin: 20px 0 12px;
-  font-size: 1.6rem;
-  letter-spacing: -0.01em;
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
   overflow-wrap: anywhere;
 }
 
@@ -547,16 +691,16 @@ h3 {
 }
 
 .tag {
-  padding: 2px 10px;
+  padding: 3px 11px;
   font-size: 0.85rem;
-  color: var(--color-accent);
-  background: var(--color-accent-soft);
+  color: var(--color-text);
+  background: var(--color-soft);
   border-radius: 999px;
 }
 
 .detail-card {
   margin-top: 20px;
-  padding: 16px;
+  padding: 18px;
   background: var(--color-surface);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
@@ -564,7 +708,8 @@ h3 {
 
 .detail-card h3 {
   margin: 0 0 8px;
-  font-size: 1.15rem;
+  font-size: 1.2rem;
+  letter-spacing: -0.01em;
 }
 
 /* Zutaten: Menge links (feste Breite), Zutat rechts, Trennlinien dazwischen */
@@ -578,7 +723,7 @@ h3 {
   display: grid;
   grid-template-columns: 6.5em 1fr;
   gap: 12px;
-  padding: 10px 0;
+  padding: 11px 0;
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -602,7 +747,7 @@ h3 {
 
 .steps li {
   position: relative;
-  padding: 10px 0 10px 44px;
+  padding: 10px 0 10px 46px;
   font-size: 1.05rem;
   line-height: 1.6;
   counter-increment: step;
@@ -616,12 +761,12 @@ h3 {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   font-size: 0.9rem;
   font-weight: 700;
-  color: var(--color-accent);
-  background: var(--color-accent-soft);
+  color: var(--color-on-primary);
+  background: var(--color-primary);
   border-radius: 50%;
 }
 
@@ -631,7 +776,7 @@ h3 {
 }
 
 .source a {
-  color: var(--color-accent);
+  color: var(--color-text);
 }
 
 .detail-actions {
@@ -645,7 +790,9 @@ h3 {
 
 .form-title {
   margin: 8px 0 16px;
-  font-size: 1.4rem;
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
 .form-card {
@@ -672,9 +819,10 @@ h3 {
 
 .image-preview {
   width: 100%;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 16 / 10;
   object-fit: cover;
   border-radius: var(--radius-small);
+  animation: fade-in 0.3s both;
 }
 
 .image-actions {
@@ -690,8 +838,8 @@ h3 {
   gap: 8px;
   min-height: 56px;
   font-size: 1rem;
-  color: var(--color-accent);
-  background: var(--color-background);
+  color: var(--color-text);
+  background: var(--color-field);
   border: 2px dashed var(--color-border);
   border-radius: var(--radius-small);
   cursor: pointer;
@@ -721,6 +869,12 @@ h3 {
   gap: 8px;
 }
 
+/* Neue Zeilen blenden kurz ein */
+.ingredient-row,
+.step-row {
+  animation: fade-in 0.25s both;
+}
+
 /* Zutat: [Menge] [Zutat] [✕] in einer Zeile */
 .ingredient-row {
   display: grid;
@@ -735,7 +889,7 @@ h3 {
 
 .step-row {
   display: grid;
-  grid-template-columns: 1.6em 1fr 44px;
+  grid-template-columns: 1.6em 1fr 40px;
   gap: 6px;
   align-items: start;
 }
@@ -764,7 +918,7 @@ h3 {
   padding: 0 4px;
   font: inherit;
   font-weight: 600;
-  color: var(--color-accent);
+  color: var(--color-text);
   background: none;
   border: none;
   cursor: pointer;
@@ -796,8 +950,8 @@ h3 {
   gap: 10px;
   margin: 0 calc(-16px - var(--safe-right)) calc(-24px - var(--safe-bottom)) calc(-16px - var(--safe-left));
   padding: 12px calc(16px + var(--safe-right)) calc(12px + var(--safe-bottom)) calc(16px + var(--safe-left));
-  background: rgba(246, 246, 244, 0.95);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: var(--color-background-translucent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border-top: 1px solid var(--color-border);
 }
