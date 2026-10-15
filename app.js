@@ -566,7 +566,11 @@ shoppingBring.addEventListener('click', async () => {
   shoppingMessage.textContent = `✓ ${count} an Bring! gesendet (Liste „${result.list}“).`;
 
   const days = [...shopping.days].filter((day) => planEntries[day]?.recipe_id && !planEntries[day].is_purchased).sort();
-  if (days.length === 0) return;
+  if (days.length === 0) {
+    // Nichts zu fragen – aber sagen, warum, statt die Rückfrage stillschweigend wegzulassen
+    shoppingMessage.textContent += ' Die gewählten Tage waren schon als gekauft markiert.';
+    return;
+  }
   const label = days.length === 1 ? '1 Tag' : `${days.length} Tage`;
   const choice = await openSheet({
     title: 'An Bring! gesendet',
