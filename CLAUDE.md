@@ -71,5 +71,8 @@ Nur an der aktuellen Stufe arbeiten. Spätere Stufen nicht vorwegnehmen.
 ## Bedienung
 
 - Für Handys gebaut (Hochformat), große Schaltflächen, gut mit dem Daumen bedienbar
-- Ruhiges, helles Design, hält sich an die sicheren Bereiche des iPhones (Notch, Home-Leiste)
+- Ruhiges Design in Anthrazit-Tönen, folgt der Einstellung des Handys (hell oder Dunkelmodus); Farbe sparsam als Akzent
+- Rezepte als Bildkarten mit Text auf dem Foto; ohne Foto Farbkachel je Hauptkomponente
+- Dezente Animationen (Einblenden, Antipp-Rückmeldung); bei „Bewegung reduzieren“ am Handy keine Animationen
+- Hält sich an die sicheren Bereiche des iPhones (Notch, Home-Leiste)
 - Funktioniert auch bei schlechtem Empfang lesend (zuletzt geladene Rezepte zwischenspeichern)
