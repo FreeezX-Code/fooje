@@ -82,7 +82,7 @@ function thumbnail(recipe, imageUrl) {
 // Zeichnet die 7 Tage ab "monday".
 // entries = { "2026-10-19": Eintrag aus meal_plan_days, … }, recipes = alle Rezepte
 // highlight = Set von Tagen, die gerade geändert wurden (leuchten kurz auf)
-// onEdit(tag) = wird beim Antippen von "⋯" bzw. eines leeren Tages aufgerufen
+// onEdit(tag) = wird beim Antippen eines Tages oder von "⋯" aufgerufen
 export function renderWeek(container, monday, entries, recipes, imageUrls, { highlight = new Set(), onEdit = () => {} } = {}) {
   container.replaceChildren();
   const today = toIsoDate(new Date());
@@ -101,11 +101,11 @@ export function renderWeek(container, monday, entries, recipes, imageUrls, { hig
     dateBox.append(el('span', 'day-weekday', WEEKDAYS[i]), el('span', 'day-number', String(date.getDate())));
     if (iso === today) dateBox.append(el('span', 'day-today', 'Heute'));
 
-    // Mit Rezept: Antippen öffnet das Rezept. Sonst: Antippen öffnet das Menü für diesen Tag.
-    let content;
+    // Antippen des Tages öffnet das Menü für diesen Tag (dort auch "Rezept ansehen")
+    const content = el('button', 'day-content');
+    content.type = 'button';
+    content.addEventListener('click', () => onEdit(iso));
     if (recipe) {
-      content = el('a', 'day-content');
-      content.href = '#/recipe/' + recipe.id;
       const text = el('div', 'day-text');
       const name = el('span', 'day-recipe-name', recipe.name);
       const badges = [entry.is_locked ? '🔒' : null, entry.is_purchased ? '🛒' : null].filter(Boolean);
@@ -114,9 +114,7 @@ export function renderWeek(container, monday, entries, recipes, imageUrls, { hig
       text.append(name, el('span', 'day-recipe-meta', meta.filter(Boolean).join(' · ')));
       content.append(thumbnail(recipe, imageUrls[recipe.image_path]), text);
     } else {
-      content = el('button', 'day-content is-empty');
-      content.type = 'button';
-      content.addEventListener('click', () => onEdit(iso));
+      content.classList.add('is-empty');
       if (entry?.is_day_off) {
         content.append(el('span', 'day-empty-icon', '🍽'), el('span', null, 'Frei – heute wird nicht gekocht'));
       } else if (entry?.recipe_id) {

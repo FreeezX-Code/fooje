@@ -475,11 +475,16 @@ async function rerollDay(day, extraRows) {
   }
 }
 
-// Menü für einen Tag ("⋯" oder Antippen eines leeren Tages)
+// Menü für einen Tag (Antippen des Tages oder "⋯")
 async function editDay(day) {
-  if (isOffline) return;
   const entry = planEntries[day];
   const recipe = entry && !entry.is_day_off ? recipeById(entry.recipe_id) : null;
+
+  // Offline kann nichts geändert werden: dann direkt das Rezept öffnen (zum Nachlesen beim Kochen)
+  if (isOffline) {
+    if (recipe) location.hash = '#/recipe/' + recipe.id;
+    return;
+  }
 
   const actions = [];
   if (recipe) actions.push({ label: '📖 Rezept ansehen', value: 'view' });

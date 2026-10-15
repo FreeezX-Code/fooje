@@ -842,12 +842,12 @@ body.has-tab-bar .fab {
   background: var(--color-soft);
 }
 
-/* Offline kann nichts geändert werden */
+/* Offline kann nichts geändert werden (Antippen öffnet dann direkt das Rezept) */
 .offline .day-menu {
   visibility: hidden;
 }
 
-.offline button.day-content {
+.offline .day-content.is-empty {
   pointer-events: none;
 }
 
