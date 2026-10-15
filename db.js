@@ -19,3 +19,10 @@ export async function signIn(email, password) {
 export async function signOut() {
   await supabase.auth.signOut({ scope: 'local' });
 }
+
+// Alle Rezepte, alphabetisch sortiert
+export async function fetchRecipes() {
+  const { data, error } = await supabase.from('recipes').select('*').order('name');
+  if (error) throw error;
+  return data;
+}

@@ -2,7 +2,7 @@
 // Strategie "erst Netz, dann Zwischenspeicher": Mit Netz kommt immer die neueste Version,
 // ohne Netz die zuletzt gespeicherte. So muss bei Änderungen nichts von Hand erneuert werden.
 
-const CACHE_NAME = 'app-shell-v2';
+const CACHE_NAME = 'app-shell-v3';
 
 const APP_FILES = [
   './',
@@ -10,6 +10,7 @@ const APP_FILES = [
   './style.css',
   './app.js',
   './db.js',
+  './views.js',
   './config.js',
   './manifest.json',
   './icons/icon-192.png',

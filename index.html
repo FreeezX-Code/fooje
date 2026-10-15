@@ -48,9 +48,18 @@
     </section>
 
     <section id="main-view" hidden>
-      <p class="muted">Angemeldet als <span id="user-email"></span></p>
-      <p>Hier entsteht eure Rezeptsammlung.</p>
-      <button id="logout-button" type="button" class="button-secondary">Abmelden</button>
+      <div id="list-view">
+        <h2>Rezepte</h2>
+        <p id="list-message" class="muted"></p>
+        <ul id="recipe-list" class="recipe-list"></ul>
+
+        <div class="account">
+          <p class="muted">Angemeldet als <span id="user-email"></span></p>
+          <button id="logout-button" type="button" class="button-secondary">Abmelden</button>
+        </div>
+      </div>
+
+      <article id="detail-view" class="recipe-detail" hidden></article>
     </section>
   </main>
 </body>
