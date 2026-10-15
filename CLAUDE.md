@@ -62,14 +62,19 @@ Das Modell so anlegen, dass später Felder und Tabellen für die Wochenplanung e
    - „Zutaten gekauft“: pro Tag an/aus und ein Knopf „Alles als gekauft markieren“ für die Woche (ab Stufe 3 evtl. automatisch beim Senden an Bring!). Gekaufte Gerichte tauscht der Generator nie aus. Muss ein gekauftes Gericht seinem Tag weichen (anderes Rezept, Tag frei, neu würfeln), kommt eine Rückfrage: auf den nächsten freien Tag verschieben (kein Gericht, nicht „frei“; notfalls in der Folgewoche) oder nicht mehr einplanen
    - Wochenplan erscheint live auf beiden Handys und ist offline lesbar
    - Später (verschoben): automatische Planung am gewählten Wochentag mit Benachrichtigung
-3. **Bring!-Anbindung** ← AKTUELL
-   - Einkaufsliste aus dem Wochenplan: Tage auswählen (Vorgabe: ab heute bis Sonntag, noch nicht gekauft, nicht frei), gleiche Zutaten zusammenfassen und Mengen addieren
+3. **Bring!-Anbindung** ✓ abgeschlossen
+   - Einkaufsliste aus dem Wochenplan: Tage auswählen, getrennt nach „Noch einzukaufen“ (vorausgewählt: ab heute, nicht frei) und „Schon gekauft“; gleiche Zutaten zusammenfassen und Mengen addieren
    - Portionen: Rezepte behalten ihre Standardportionen; in der Einkaufsliste pro Gericht anpassbar, die Mengen werden umgerechnet
    - Vorschau zum Abhaken: was schon im Haus ist, wird abgewählt, bevor gesendet wird
    - Senden an Bring! über eine Supabase-Funktion (inoffizielle API). Zugangsdaten nur als Geheimnis in Supabase. Empfohlen: eigenes Bring!-Konto (E-Mail + Passwort) nur für die App, Mitglied der gemeinsamen Liste – unser Haupt-Login läuft über Google/Apple
    - Nach dem Senden Rückfrage, ob die Tage als „Zutaten gekauft“ markiert werden sollen
    - Fallback „Als Text teilen“ (funktioniert auch ohne Bring!)
-4. Import aus Web und TikTok: Android über das Teilen-Menü (Web Share Target), iPhone über Link einfügen oder Kurzbefehl; Webrezepte über Schema.org-Daten auslesen, TikTok über Beschreibung und KI; Import als Entwurf
+4. **Import aus Web und TikTok** ← AKTUELL
+   - Supabase-Funktion lädt die Seite (der Browser darf fremde Seiten nicht direkt laden): Webrezepte über Schema.org-Daten, TikTok über die Videobeschreibung (Rezepte, die nur im Video gesprochen werden, sind nicht auslesbar)
+   - Claude (Anthropic-API, Schlüssel nur als Supabase-Geheimnis) bereitet bei jedem Import auf: Zutaten sauber in Menge/Einheit/Name, Schritte, Portionen, Zeit, Hauptkomponente, Beilage, Tags
+   - Bild der Webseite wird automatisch übernommen (verkleinert)
+   - Android: Teilen-Menü direkt in die App (Web Share Target). iPhone: in der App „Rezept importieren“ mit „Aus Zwischenablage einfügen“ (kein Kurzbefehl)
+   - Ergebnis ist ein Entwurf im normalen Rezeptformular (Prüf-Bildschirm), gespeichert wird erst nach dem Prüfen; Hinweis, wenn dieselbe Quelle schon als Rezept existiert
 
 Nur an der aktuellen Stufe arbeiten. Spätere Stufen nicht vorwegnehmen.
 
