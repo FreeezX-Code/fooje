@@ -58,7 +58,8 @@ Das Modell so anlegen, dass später Felder und Tabellen für die Wochenplanung e
 2. **Wochenplan und Kalender** ← AKTUELL
    - Ein Gericht pro Tag, Wochenansicht Mo–So, Navigation über eine Leiste „Rezepte | Wochenplan“
    - Generator mit Regeln für Ausgewogenheit, die Regeln sind in der App einstellbar: je Hauptkomponente mindestens/höchstens pro Woche, nicht zweimal hintereinander dieselbe Hauptkomponente bzw. Beilage, Rezepte der letzten X Wochen meiden, Favoriten bevorzugen. Reichen die Rezepte nicht, trotzdem planen und sagen, welche Regel nicht eingehalten wurde
-   - Pro Tag: neu würfeln, Gericht festhalten (bleibt beim Neu-Würfeln stehen), Tag frei (nichts planen), Rezept selbst auswählen, mit anderem Tag tauschen/verschieben
+   - Pro Tag: neu würfeln, Gericht festhalten (bleibt beim Neu-Würfeln stehen), Tag frei (nichts planen), Rezept selbst auswählen, mit anderem Tag tauschen/verschieben. Der Plan muss sich jederzeit spontan anpassen lassen (z. B. Mittwoch doch Pizza)
+   - „Zutaten gekauft“: pro Tag an/aus und ein Knopf „Alles als gekauft markieren“ für die Woche (ab Stufe 3 evtl. automatisch beim Senden an Bring!). Gekaufte Gerichte tauscht der Generator nie aus. Muss ein gekauftes Gericht seinem Tag weichen (anderes Rezept, Tag frei, neu würfeln), kommt eine Rückfrage: auf den nächsten freien Tag verschieben (kein Gericht, nicht „frei“; notfalls in der Folgewoche) oder nicht mehr einplanen
    - Wochenplan erscheint live auf beiden Handys und ist offline lesbar
    - Später (verschoben): automatische Planung am gewählten Wochentag mit Benachrichtigung
 3. Bring!-Anbindung: Zutaten der Woche zusammenfassen und über eine Supabase-Funktion an Bring! übergeben (inoffizielle API), Fallback „als Text teilen“
