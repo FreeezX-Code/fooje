@@ -71,6 +71,31 @@ export async function deleteRecipe(id) {
   if (error) throw error;
 }
 
+// ---- Live-Abgleich (Supabase Realtime) ----
+
+let recipeChannel = null;
+
+// Meldet jede Änderung an den Rezepten (auch die eigenen):
+//   onUpsert(rezept) bei neuem oder geändertem Rezept, onDelete(id) bei gelöschtem
+export function subscribeToRecipeChanges(onUpsert, onDelete) {
+  if (recipeChannel) return;
+  recipeChannel = supabase
+    .channel('recipe-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'recipes' }, (payload) => {
+      if (payload.eventType === 'DELETE') onDelete(payload.old.id);
+      else onUpsert(payload.new);
+    })
+    .subscribe((status, error) => {
+      if (error) console.warn('Live-Abgleich:', status, error);
+    });
+}
+
+export function unsubscribeFromRecipeChanges() {
+  if (!recipeChannel) return;
+  supabase.removeChannel(recipeChannel);
+  recipeChannel = null;
+}
+
 // ---- Rezeptbilder (Supabase Storage) ----
 
 const IMAGE_BUCKET = 'recipe-images';

@@ -2,6 +2,7 @@
 import {
   onAuthChange, signIn, signOut, hasStoredSession, getCurrentSession,
   fetchRecipes, createRecipe, updateRecipe, deleteRecipe, insertRecipes,
+  subscribeToRecipeChanges, unsubscribeFromRecipeChanges,
   uploadImage, deleteImage, getImageUrls,
 } from './db.js';
 import { saveRecipeCache, readRecipeCache, clearRecipeCache } from './offline.js';
@@ -48,6 +49,7 @@ const cancelButton = document.getElementById('cancel-button');
 
 let recipes = [];
 let imageUrls = {}; // { Bildpfad: Link zum Anzeigen }
+let imageUrlsLoadedAt = 0; // Zeitpunkt, ab dem die Links gelten (sie laufen nach 7 Tagen ab)
 let currentUserId = null;
 let editingId = null; // id des Rezepts im Formular, null = neues Rezept
 let isOffline = false; // true = keine Verbindung, es wird der gespeicherte Stand gezeigt
@@ -89,9 +91,11 @@ function showView(session) {
   }
 
   // 3. Abgemeldet: Anmeldebildschirm, alles Gemerkte vom Handy löschen
+  unsubscribeFromRecipeChanges();
   currentUserId = null;
   recipes = [];
   imageUrls = {};
+  imageUrlsLoadedAt = 0;
   clearRecipeCache();
   setOffline(false);
   loadingView.hidden = true;
@@ -116,7 +120,7 @@ function useCache(cache) {
   sortRecipes();
   setOffline(true, cache.savedAt);
   showList();
-  showRoute();
+  refreshView();
 }
 
 // Aktuellen Stand auf dem Handy merken (nach Laden, Speichern, Löschen)
@@ -195,17 +199,25 @@ async function loadImageUrls(paths) {
 
 // Lädt die Rezepte vom Server. Klappt das nicht, wird der gespeicherte Stand gezeigt.
 async function loadRecipes() {
-  if (!isOffline) listMessage.textContent = 'Rezepte werden geladen …';
+  if (!isOffline && recipes.length === 0) listMessage.textContent = 'Rezepte werden geladen …';
   try {
     const loaded = await fetchRecipes();
     recipes = loaded;
     sortRecipes();
-    imageUrls = {};
-    await loadImageUrls(recipes.map((r) => r.image_path).filter(Boolean));
+
+    // Bild-Links einmal am Tag komplett erneuern, sonst nur fehlende holen
+    // (so werden die Bilder nicht bei jedem Neuladen erneut heruntergeladen)
+    if (Date.now() - imageUrlsLoadedAt > 24 * 60 * 60 * 1000) {
+      imageUrls = {};
+      imageUrlsLoadedAt = Date.now();
+    }
+    await loadImageUrls(recipes.map((r) => r.image_path).filter((path) => path && !imageUrls[path]));
+
     setOffline(false);
     rememberRecipes();
     showList();
-    showRoute();
+    refreshView();
+    subscribeToRecipeChanges(handleRemoteUpsert, handleRemoteDelete);
   } catch (error) {
     console.error(error);
     const cache = readRecipeCache();
@@ -213,10 +225,39 @@ async function loadRecipes() {
       useCache(cache);
     } else {
       listMessage.textContent = 'Rezepte konnten nicht geladen werden. Bitte Internet prüfen.';
-      showRoute();
+      refreshView();
     }
   }
 }
+
+// ---- Live-Abgleich: Änderungen vom anderen Handy ----
+
+async function handleRemoteUpsert(recipe) {
+  if (recipe.image_path && !imageUrls[recipe.image_path]) await loadImageUrls([recipe.image_path]);
+  recipes = recipes.filter((r) => r.id !== recipe.id).concat(recipe);
+  sortRecipes();
+  rememberRecipes();
+  showList();
+  refreshView();
+}
+
+function handleRemoteDelete(id) {
+  if (!recipes.some((r) => r.id === id)) return; // z. B. eigene Löschung, schon erledigt
+  recipes = recipes.filter((r) => r.id !== id);
+  rememberRecipes();
+  showList();
+  // Wer gerade genau dieses Rezept ansieht, landet in der Liste
+  if (location.hash === '#/recipe/' + id) location.replace('#');
+  else refreshView();
+}
+
+// Kommt die App aus dem Hintergrund zurück, einmal neu laden: Während das Handy
+// gesperrt war, war auch die Live-Verbindung unterbrochen und hat Änderungen verpasst.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible' || !currentUserId) return;
+  if (isOffline) retryConnection();
+  else loadRecipes();
+});
 
 // "Erneut versuchen" und automatisch, sobald das Handy wieder Netz meldet
 async function retryConnection() {
@@ -248,7 +289,20 @@ window.addEventListener('online', retryConnection);
 //   #/recipe/<id>      → Details
 //   alles andere       → Liste
 // So funktioniert auch die Zurück-Geste bzw. -Taste des Handys.
+// showRoute: beim Wechsel der Ansicht (springt nach oben)
 function showRoute() {
+  renderRoute();
+  window.scrollTo(0, 0);
+}
+
+// refreshView: nach geänderten Daten. Bleibt an der Stelle stehen und lässt ein
+// offenes Formular in Ruhe – sonst wären die Eingaben weg.
+function refreshView() {
+  if (!formView.hidden) return;
+  renderRoute();
+}
+
+function renderRoute() {
   const hash = location.hash;
   const editMatch = hash.match(/^#\/recipe\/([^/]+)\/edit$/);
   const detailMatch = hash.match(/^#\/recipe\/([^/]+)$/);
@@ -275,7 +329,6 @@ function showRoute() {
 
   for (const v of [listView, detailView, formView]) v.hidden = v !== view;
   formError.textContent = '';
-  window.scrollTo(0, 0);
 }
 
 // Verständliche Fehlermeldung für Speichern/Löschen
