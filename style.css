@@ -274,8 +274,21 @@ body {
 }
 
 .offline .new-recipe-button,
-.offline .detail-actions {
+.offline .detail-actions,
+.offline .import-button {
   display: none;
+}
+
+.backup {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 32px;
+}
+
+.backup h3,
+.backup p {
+  margin: 0;
 }
 
 /* Suche und Filter */

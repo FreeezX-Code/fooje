@@ -73,6 +73,17 @@
         <p id="list-message" class="muted"></p>
         <ul id="recipe-list" class="recipe-list"></ul>
 
+        <div class="backup">
+          <h3>Backup</h3>
+          <p class="muted">Alle Rezepte als Datei sichern (ohne Bilder) oder eine gesicherte Datei wieder einspielen.</p>
+          <button id="export-button" type="button" class="button-secondary">Backup speichern</button>
+          <label class="button-secondary import-button">
+            Backup einspielen
+            <input id="import-input" type="file" hidden>
+          </label>
+          <p id="backup-message" class="muted" role="status"></p>
+        </div>
+
         <div class="account">
           <p class="muted">Angemeldet als <span id="user-email"></span></p>
           <button id="logout-button" type="button" class="button-secondary">Abmelden</button>

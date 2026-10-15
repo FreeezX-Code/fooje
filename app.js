@@ -1,10 +1,11 @@
 // Einstiegspunkt der App: entscheidet, welche Ansicht gezeigt wird.
 import {
   onAuthChange, signIn, signOut, hasStoredSession, getCurrentSession,
-  fetchRecipes, createRecipe, updateRecipe, deleteRecipe,
+  fetchRecipes, createRecipe, updateRecipe, deleteRecipe, insertRecipes,
   uploadImage, deleteImage, getImageUrls,
 } from './db.js';
 import { saveRecipeCache, readRecipeCache, clearRecipeCache } from './offline.js';
+import { createBackupFile, shareOrDownload, parseBackup } from './backup.js';
 import { renderRecipeList, renderRecipeDetail, renderChips, MAIN_COMPONENT_LABELS } from './views.js';
 import { fillRecipeForm, readRecipeForm, readImageChoice } from './recipe-form.js';
 import { collectTags, filterRecipes, isFilterActive } from './filter.js';
@@ -34,6 +35,10 @@ const searchInput = document.getElementById('search-input');
 const mainComponentChips = document.getElementById('main-component-chips');
 const tagChips = document.getElementById('tag-chips');
 const filterReset = document.getElementById('filter-reset');
+
+const exportButton = document.getElementById('export-button');
+const importInput = document.getElementById('import-input');
+const backupMessage = document.getElementById('backup-message');
 
 const formView = document.getElementById('form-view');
 const recipeForm = document.getElementById('recipe-form');
@@ -346,6 +351,54 @@ async function handleDelete(recipe) {
     alert('Löschen fehlgeschlagen: ' + saveErrorText(error));
   }
 }
+
+// ---- Backup ----
+
+exportButton.addEventListener('click', async () => {
+  backupMessage.textContent = '';
+  await shareOrDownload(createBackupFile(recipes));
+});
+
+importInput.addEventListener('change', async () => {
+  const file = importInput.files[0];
+  importInput.value = ''; // damit dieselbe Datei erneut gewählt werden kann
+  if (!file) return;
+  backupMessage.textContent = '';
+
+  let result;
+  try {
+    result = parseBackup(await file.text(), new Set(recipes.map((r) => r.id)));
+  } catch (error) {
+    backupMessage.textContent = error.message;
+    return;
+  }
+
+  const { newRecipes, existingCount, invalidCount } = result;
+  const notes = [];
+  if (existingCount > 0) notes.push(`${existingCount} schon vorhanden – bleiben unverändert`);
+  if (invalidCount > 0) notes.push(`${invalidCount} unvollständig – werden übersprungen`);
+  const details = notes.length > 0 ? ` (${notes.join(', ')})` : '';
+
+  if (newRecipes.length === 0) {
+    backupMessage.textContent = `Keine neuen Rezepte in der Datei${details}.`;
+    return;
+  }
+  if (!confirm(`${newRecipes.length} neue Rezepte einspielen?${details}`)) return;
+
+  backupMessage.textContent = 'Wird eingespielt …';
+  try {
+    const inserted = await insertRecipes(newRecipes);
+    await loadImageUrls(inserted.map((r) => r.image_path).filter(Boolean));
+    recipes = recipes.concat(inserted);
+    sortRecipes();
+    rememberRecipes();
+    showList();
+    backupMessage.textContent = `${inserted.length} Rezepte eingespielt.`;
+  } catch (error) {
+    console.error(error);
+    backupMessage.textContent = 'Einspielen fehlgeschlagen: ' + saveErrorText(error);
+  }
+});
 
 // Fehlermeldungen von Supabase in verständliches Deutsch übersetzen
 function loginErrorText(error) {

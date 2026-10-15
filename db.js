@@ -59,6 +59,13 @@ export async function updateRecipe(id, recipe) {
   return data;
 }
 
+// Mehrere Rezepte auf einmal anlegen (Backup einspielen), gibt die gespeicherten zurück
+export async function insertRecipes(list) {
+  const { data, error } = await supabase.from('recipes').insert(list).select();
+  if (error) throw error;
+  return data;
+}
+
 export async function deleteRecipe(id) {
   const { error } = await supabase.from('recipes').delete().eq('id', id);
   if (error) throw error;
