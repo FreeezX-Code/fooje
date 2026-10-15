@@ -103,27 +103,36 @@ export async function savePlannerRules(rules) {
 
 // ---- Live-Abgleich (Supabase Realtime) ----
 
-let recipeChannel = null;
+let changesChannel = null;
 
-// Meldet jede Änderung an den Rezepten (auch die eigenen):
-//   onUpsert(rezept) bei neuem oder geändertem Rezept, onDelete(id) bei gelöschtem
-export function subscribeToRecipeChanges(onUpsert, onDelete) {
-  if (recipeChannel) return;
-  recipeChannel = supabase
-    .channel('recipe-changes')
+// Meldet jede Änderung (auch die eigenen) an Rezepten, Wochenplan und Regeln:
+//   onRecipeUpsert(rezept), onRecipeDelete(id)
+//   onPlanUpsert(tag), onPlanDelete(datum)
+//   onRulesChange(regeln)
+export function subscribeToChanges({ onRecipeUpsert, onRecipeDelete, onPlanUpsert, onPlanDelete, onRulesChange }) {
+  if (changesChannel) return;
+  changesChannel = supabase
+    .channel('app-changes')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'recipes' }, (payload) => {
-      if (payload.eventType === 'DELETE') onDelete(payload.old.id);
-      else onUpsert(payload.new);
+      if (payload.eventType === 'DELETE') onRecipeDelete(payload.old.id);
+      else onRecipeUpsert(payload.new);
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'meal_plan_days' }, (payload) => {
+      if (payload.eventType === 'DELETE') onPlanDelete(payload.old.day);
+      else onPlanUpsert(payload.new);
+    })
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'planner_settings' }, (payload) => {
+      onRulesChange(payload.new.rules);
     })
     .subscribe((status, error) => {
       if (error) console.warn('Live-Abgleich:', status, error);
     });
 }
 
-export function unsubscribeFromRecipeChanges() {
-  if (!recipeChannel) return;
-  supabase.removeChannel(recipeChannel);
-  recipeChannel = null;
+export function unsubscribeFromChanges() {
+  if (!changesChannel) return;
+  supabase.removeChannel(changesChannel);
+  changesChannel = null;
 }
 
 // ---- Rezeptbilder (Supabase Storage) ----

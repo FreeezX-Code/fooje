@@ -2,7 +2,7 @@
 import {
   onAuthChange, signIn, signOut, hasStoredSession, getCurrentSession,
   fetchRecipes, createRecipe, updateRecipe, deleteRecipe, insertRecipes,
-  subscribeToRecipeChanges, unsubscribeFromRecipeChanges,
+  subscribeToChanges, unsubscribeFromChanges,
   fetchPlanDays, savePlanDays, fetchPlannerRules, savePlannerRules,
   uploadImage, deleteImage, getImageUrls,
 } from './db.js';
@@ -127,7 +127,7 @@ function showView(session) {
   }
 
   // 3. Abgemeldet: Anmeldebildschirm, alles Gemerkte vom Handy löschen
-  unsubscribeFromRecipeChanges();
+  unsubscribeFromChanges();
   currentUserId = null;
   recipes = [];
   imageUrls = {};
@@ -144,6 +144,7 @@ function showView(session) {
 // Offline-Hinweis ein-/ausblenden. Offline sind Neu, Bearbeiten und Löschen ausgeblendet (siehe style.css).
 function setOffline(offline, savedAt = null) {
   isOffline = offline;
+  if (offline) weekMessage.textContent = ''; // der Offline-Hinweis oben sagt schon alles
   document.body.classList.toggle('offline', offline);
   offlineBanner.hidden = !offline;
   offlineDate.textContent = savedAt
@@ -156,15 +157,20 @@ function useCache(cache) {
   if (recipes.length === 0) animateList = true;
   recipes = cache.recipes;
   imageUrls = cache.imageUrls ?? {};
+  planEntries = { ...(cache.planEntries ?? {}), ...planEntries };
   sortRecipes();
   setOffline(true, cache.savedAt);
   showList();
   refreshView();
 }
 
-// Aktuellen Stand auf dem Handy merken (nach Laden, Speichern, Löschen)
+// Aktuellen Stand auf dem Handy merken (nach Laden, Speichern, Löschen):
+// Rezepte und der Wochenplan von 4 Wochen zurück bis 8 Wochen voraus
 function rememberRecipes() {
-  saveRecipeCache({ userId: currentUserId, email: userEmail.textContent, recipes, imageUrls });
+  const from = toIsoDate(addDays(new Date(), -28));
+  const to = toIsoDate(addDays(new Date(), 56));
+  const plan = Object.fromEntries(Object.entries(planEntries).filter(([day]) => day >= from && day <= to));
+  saveRecipeCache({ userId: currentUserId, email: userEmail.textContent, recipes, imageUrls, planEntries: plan });
 }
 
 function sortRecipes() {
@@ -262,7 +268,13 @@ async function loadRecipes() {
     rememberRecipes();
     showList();
     refreshView();
-    subscribeToRecipeChanges(handleRemoteUpsert, handleRemoteDelete);
+    subscribeToChanges({
+      onRecipeUpsert: handleRemoteUpsert,
+      onRecipeDelete: handleRemoteDelete,
+      onPlanUpsert: handleRemotePlanUpsert,
+      onPlanDelete: handleRemotePlanDelete,
+      onRulesChange: handleRemoteRulesChange,
+    });
   } catch (error) {
     console.error(error);
     const cache = readRecipeCache();
@@ -286,7 +298,10 @@ function showWeek(monday) {
   weekToday.hidden = toIsoDate(monday) === toIsoDate(startOfWeek(new Date()));
   if (isNewWeek) weekNotes.hidden = true;
   drawWeek();
-  loadWeek(monday, isNewWeek);
+  // Offline nicht nachladen: Ohne gültige Anmeldung käme wegen der Zugriffsregeln eine
+  // leere Liste zurück und würde den gemerkten Plan überschreiben. Neu geladen wird,
+  // sobald Verbindung und Anmeldung wieder stehen (siehe retryConnection).
+  if (!isOffline) loadWeek(monday, isNewWeek);
 }
 
 // Zeichnet die angezeigte Woche neu. highlight = Tage, die kurz aufleuchten sollen.
@@ -378,6 +393,7 @@ async function planWeek(rerollAll) {
     const rows = Object.entries(assignments).map(([day, recipe_id]) => ({ day, recipe_id, is_locked: false, is_day_off: false }));
     if (rows.length > 0) {
       for (const saved of await savePlanDays(rows)) planEntries[saved.day] = saved;
+      rememberRecipes();
     }
     if (toIsoDate(monday) === toIsoDate(weekMonday)) {
       drawWeek(new Set(rows.map((r) => r.day)));
@@ -418,6 +434,7 @@ async function saveDays(rows) {
   weekMessage.textContent = '';
   try {
     for (const saved of await savePlanDays(rows)) planEntries[saved.day] = saved;
+    rememberRecipes();
     drawWeek(new Set(rows.map((r) => r.day)));
     return true;
   } catch (error) {
@@ -576,9 +593,10 @@ async function loadWeek(monday, showLoading) {
       if (iso >= from && iso <= to) delete planEntries[iso];
     }
     for (const day of days) planEntries[day.day] = day;
+    rememberRecipes();
   } catch (error) {
     console.error(error);
-    weekMessage.textContent = 'Wochenplan konnte nicht geladen werden. Bitte Internet prüfen.';
+    if (!isOffline) weekMessage.textContent = 'Wochenplan konnte nicht geladen werden. Bitte Internet prüfen.';
   }
   weekDays.classList.remove('is-loading');
   // Nur neu zeichnen, wenn noch dieselbe Woche angezeigt wird
@@ -673,6 +691,29 @@ function handleRemoteDelete(id) {
   // Wer gerade genau dieses Rezept ansieht, landet in der Liste
   if (location.hash === '#/recipe/' + id) location.replace('#/recipes');
   else refreshView();
+}
+
+// Wochenplan vom anderen Handy. Eigene Änderungen kommen hier auch an – die sind
+// schon eingetragen (gleicher Stand) und werden übersprungen, damit nichts doppelt aufblinkt.
+function handleRemotePlanUpsert(row) {
+  const known = planEntries[row.day];
+  if (known && known.updated_at === row.updated_at) return;
+  planEntries[row.day] = row;
+  rememberRecipes();
+  if (!weekView.hidden) drawWeek(new Set([row.day]));
+}
+
+function handleRemotePlanDelete(day) {
+  if (!planEntries[day]) return;
+  delete planEntries[day];
+  rememberRecipes();
+  if (!weekView.hidden) drawWeek();
+}
+
+// Regeln vom anderen Handy. Ist die Regel-Seite offen und noch unverändert, sofort anzeigen.
+function handleRemoteRulesChange(rules) {
+  plannerRules = normalizeRules(rules);
+  if (!rulesView.hidden && !rulesEdited) fillRulesForm(plannerRules);
 }
 
 // Kommt die App aus dem Hintergrund zurück, einmal neu laden: Während das Handy
