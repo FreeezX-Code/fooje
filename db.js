@@ -101,27 +101,44 @@ export async function savePlannerRules(rules) {
   return data.rules;
 }
 
-// ---- Bring! ----
+// ---- Supabase-Funktionen (Bring!, Import) ----
 
-// Schickt Zutaten über die Supabase-Funktion "bring" an die Bring!-Liste.
-// items = [{ name: "Nudeln", spec: "500 g" }]. Gibt { count, list } zurück oder wirft einen Fehler mit deutscher Meldung.
-export async function sendToBring(items) {
-  const { data, error } = await supabase.functions.invoke('bring', { body: { items } });
+// Ruft eine Supabase-Funktion auf. Fehler kommen als deutsche Meldung (aus der Funktion selbst, wenn möglich).
+async function invokeFunction(name, body, { failText, missingText }) {
+  const { data, error } = await supabase.functions.invoke(name, { body });
   if (!error) return data;
 
-  let message = 'Senden an Bring! fehlgeschlagen. Bitte Internet prüfen.';
+  let message = failText;
   const response = error.context;
   if (response?.status === 404) {
-    message = 'Die Bring!-Funktion ist in Supabase noch nicht eingerichtet.';
+    message = missingText;
   } else if (response && typeof response.json === 'function') {
     try {
-      const body = await response.json();
-      if (body?.error) message = body.error;
+      const details = await response.json();
+      if (details?.error) message = details.error;
     } catch {
       // keine lesbare Antwort – allgemeine Meldung behalten
     }
   }
   throw new Error(message);
+}
+
+// Schickt Zutaten über die Supabase-Funktion "bring" an die Bring!-Liste.
+// items = [{ name: "Nudeln", spec: "500 g" }]. Gibt { count, list } zurück.
+export function sendToBring(items) {
+  return invokeFunction('bring', { items }, {
+    failText: 'Senden an Bring! fehlgeschlagen. Bitte Internet prüfen.',
+    missingText: 'Die Bring!-Funktion ist in Supabase noch nicht eingerichtet.',
+  });
+}
+
+// Liest ein Rezept von einer Webseite oder einem TikTok-Video (Supabase-Funktion "import", mit Claude).
+// Gibt { recipe, image: { type, data } | null, kind } zurück.
+export function importRecipe(url) {
+  return invokeFunction('import', { url }, {
+    failText: 'Import fehlgeschlagen. Bitte Internet prüfen.',
+    missingText: 'Die Import-Funktion ist in Supabase noch nicht eingerichtet.',
+  });
 }
 
 // ---- Live-Abgleich (Supabase Realtime) ----

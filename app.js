@@ -3,7 +3,7 @@ import {
   onAuthChange, signIn, signOut, hasStoredSession, getCurrentSession,
   fetchRecipes, createRecipe, updateRecipe, deleteRecipe, insertRecipes,
   subscribeToChanges, unsubscribeFromChanges,
-  fetchPlanDays, savePlanDays, fetchPlannerRules, savePlannerRules, sendToBring,
+  fetchPlanDays, savePlanDays, fetchPlannerRules, savePlannerRules, sendToBring, importRecipe,
   uploadImage, deleteImage, getImageUrls,
 } from './db.js';
 import { saveRecipeCache, readRecipeCache, clearRecipeCache } from './offline.js';
@@ -16,7 +16,7 @@ import { aggregateIngredients, renderShopping, shoppingListText } from './shoppi
 import { normalizeRules, checkRules, generateWeek } from './planner.js';
 import { fillRulesForm, readRulesForm } from './rules-form.js';
 import { renderRecipeList, renderSkeletonList, renderRecipeDetail, renderChips, MAIN_COMPONENT_LABELS } from './views.js';
-import { fillRecipeForm, readRecipeForm, readImageChoice } from './recipe-form.js';
+import { fillRecipeForm, readRecipeForm, readImageChoice, useImportedImage } from './recipe-form.js';
 import { collectTags, filterRecipes, isFilterActive } from './filter.js';
 
 const loadingView = document.getElementById('loading-view');
@@ -79,7 +79,17 @@ const rulesCancel = document.getElementById('rules-cancel');
 const pageTitle = document.getElementById('page-title');
 const tabBar = document.getElementById('tab-bar');
 
+const newRecipeButton = document.getElementById('new-recipe');
+const importView = document.getElementById('import-view');
+const importForm = document.getElementById('import-form');
+const importStatus = document.getElementById('import-status');
+const importError = document.getElementById('import-error');
+const importPaste = document.getElementById('import-paste');
+const importCancel = document.getElementById('import-cancel');
+const importSubmit = document.getElementById('import-submit');
+
 const formView = document.getElementById('form-view');
+const formNotice = document.getElementById('form-notice');
 const recipeForm = document.getElementById('recipe-form');
 const formError = document.getElementById('form-error');
 const saveButton = document.getElementById('save-button');
@@ -90,6 +100,7 @@ let imageUrls = {}; // { Bildpfad: Link zum Anzeigen }
 let imageUrlsLoadedAt = 0; // Zeitpunkt, ab dem die Links gelten (sie laufen nach 7 Tagen ab)
 let currentUserId = null;
 let editingId = null; // id des Rezepts im Formular, null = neues Rezept
+let pendingDraft = null; // importierter Entwurf, der beim nächsten Öffnen von "Neues Rezept" eingesetzt wird
 let isOffline = false; // true = keine Verbindung, es wird der gespeicherte Stand gezeigt
 let animateList = false; // true = Karten beim nächsten Anzeigen einschweben lassen
 let planEntries = {}; // geladene Tage des Wochenplans: { "2026-10-19": Eintrag, … }
@@ -947,7 +958,7 @@ function showRoute() {
 // refreshView: nach geänderten Daten. Bleibt an der Stelle stehen und lässt ein
 // offenes Formular in Ruhe – sonst wären die Eingaben weg.
 function refreshView() {
-  if (!formView.hidden || !rulesView.hidden) return;
+  if (!formView.hidden || !rulesView.hidden || !importView.hidden) return;
   renderRoute();
 }
 
@@ -978,17 +989,22 @@ function renderRoute() {
       openRules();
       view = rulesView;
     }
-  } else if (isOffline && (hash === '#/new' || editMatch)) {
+  } else if (isOffline && (hash === '#/new' || hash === '#/import' || editMatch)) {
     // Offline kann nichts gespeichert werden, also auch kein Formular öffnen
     view = listView;
+  } else if (hash === '#/import') {
+    openImport();
+    view = importView;
   } else if (hash === '#/new') {
     editingId = null;
-    fillRecipeForm(null);
+    showDraft(pendingDraft);
+    pendingDraft = null; // nur einmal einsetzen
     view = formView;
   } else if (findRecipe(editMatch)) {
     const recipe = findRecipe(editMatch);
     editingId = recipe.id;
     fillRecipeForm(recipe, imageUrls[recipe.image_path]);
+    formNotice.hidden = true;
     view = formView;
   } else if (findRecipe(detailMatch)) {
     const recipe = findRecipe(detailMatch);
@@ -1005,7 +1021,7 @@ function renderRoute() {
     view = weekView;
   }
 
-  for (const v of [listView, detailView, formView, weekView, rulesView, shoppingView]) v.hidden = v !== view;
+  for (const v of [listView, detailView, formView, weekView, rulesView, shoppingView, importView]) v.hidden = v !== view;
   formError.textContent = '';
 
   // Leiste unten: aktiven Reiter markieren, Überschrift anpassen.
@@ -1018,7 +1034,7 @@ function renderRoute() {
     else tab.removeAttribute('aria-current');
   }
   pageTitle.textContent = activeTab === 'week' ? 'Wochenplan' : 'Rezepte';
-  const isForm = [formView, rulesView, shoppingView].includes(view);
+  const isForm = [formView, rulesView, shoppingView, importView].includes(view);
   tabBar.hidden = isForm;
   document.body.classList.toggle('has-tab-bar', !isForm);
 
@@ -1089,6 +1105,124 @@ recipeForm.addEventListener('submit', async (event) => {
 cancelButton.addEventListener('click', () => {
   location.replace(editingId ? '#/recipe/' + editingId : '#/recipes');
 });
+
+// ---- Rezept importieren ----
+
+// "+": importieren (Hauptweg) oder selbst eingeben
+newRecipeButton.addEventListener('click', async () => {
+  const choice = await openSheet({
+    title: 'Neues Rezept',
+    actions: [
+      { label: '🔗 Aus Link importieren (Webseite, TikTok)', value: 'import' },
+      { label: '✍️ Selbst eingeben', value: 'manual' },
+    ],
+  });
+  if (choice === 'import') location.hash = '#/import';
+  else if (choice === 'manual') location.hash = '#/new';
+});
+
+let importRunning = false;
+
+function openImport() {
+  if (importRunning) return; // Import läuft noch: alles stehen lassen
+  importForm.reset();
+  importError.textContent = '';
+  importStatus.hidden = true;
+}
+
+// Aus geteiltem Text den Link herausfischen ("Schau dir das an! https://vm.tiktok.com/…")
+function extractUrl(text) {
+  return String(text ?? '').match(/https?:\/\/[^\s<>"']+/i)?.[0].replace(/[).,!?]+$/, '') ?? null;
+}
+
+importPaste.addEventListener('click', async () => {
+  importError.textContent = '';
+  try {
+    const url = extractUrl(await navigator.clipboard.readText());
+    if (url) importForm.elements.namedItem('url').value = url;
+    else importError.textContent = 'In der Zwischenablage ist kein Link.';
+  } catch {
+    importError.textContent = 'Kein Zugriff auf die Zwischenablage – bitte lange ins Feld tippen und „Einfügen“ wählen.';
+  }
+});
+
+importForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const url = extractUrl(importForm.elements.namedItem('url').value);
+  if (!url) {
+    importError.textContent = 'Bitte einen Link (https://…) einfügen.';
+    return;
+  }
+  importError.textContent = '';
+  importStatus.hidden = false;
+  importSubmit.disabled = true;
+  importSubmit.textContent = 'Importiere …';
+  importRunning = true;
+  try {
+    const result = await importRecipe(url);
+    // Nur übernehmen, wenn man noch auf der Import-Seite ist (sonst nicht ungefragt ins Formular springen)
+    if (location.hash === '#/import') {
+      pendingDraft = result;
+      location.replace('#/new');
+    }
+  } catch (error) {
+    importError.textContent = error.message;
+  } finally {
+    importRunning = false;
+    importStatus.hidden = true;
+    importSubmit.disabled = false;
+    importSubmit.textContent = 'Importieren';
+  }
+});
+
+importCancel.addEventListener('click', () => {
+  if (history.length > 1) history.back();
+  else location.replace('#/recipes');
+});
+
+function base64ToBlob({ data, type }) {
+  const binary = atob(data);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new Blob([bytes], { type });
+}
+
+// "Neues Rezept": leer, oder mit importiertem Entwurf vorausgefüllt (Prüf-Bildschirm)
+function showDraft(draft) {
+  if (!draft) {
+    fillRecipeForm(null);
+    formNotice.hidden = true;
+    return;
+  }
+  fillRecipeForm({ ...draft.recipe, is_favorite: false, last_cooked_on: null });
+  document.getElementById('form-title').textContent = 'Importiertes Rezept prüfen';
+  if (draft.image) useImportedImage(base64ToBlob(draft.image));
+
+  // Hinweis oben: woher, und ob es das Rezept schon gibt
+  const source = draft.recipe.source_url;
+  const host = (() => {
+    try {
+      return new URL(source).hostname.replace(/^www\./, '');
+    } catch {
+      return 'dem Link';
+    }
+  })();
+  const lines = [document.createElement('p')];
+  lines[0].textContent = `✨ Von Claude aus ${host} importiert – bitte prüfen, bei Bedarf anpassen und speichern.`;
+  const duplicate = recipes.find((r) => r.source_url && r.source_url === source);
+  if (duplicate) {
+    const warning = document.createElement('p');
+    warning.append('⚠️ Dieses Rezept gibt es schon: ');
+    const link = document.createElement('a');
+    link.href = '#/recipe/' + duplicate.id;
+    link.textContent = duplicate.name;
+    warning.append(link);
+    lines.push(warning);
+  }
+  formNotice.replaceChildren(...lines);
+  formNotice.classList.toggle('has-warning', Boolean(duplicate));
+  formNotice.hidden = false;
+}
 
 async function handleDelete(recipe) {
   if (!confirm(`„${recipe.name}“ wirklich löschen?`)) return;

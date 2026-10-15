@@ -310,8 +310,10 @@ body.has-tab-bar .fab {
   color: var(--color-on-primary);
   text-decoration: none;
   background: var(--color-primary);
+  border: none;
   border-radius: 50%;
   box-shadow: var(--shadow-strong);
+  cursor: pointer;
   animation: pop-in 0.4s var(--ease) 0.2s both;
   transition: transform 0.15s var(--ease);
 }
@@ -951,6 +953,45 @@ body.has-tab-bar .fab {
 .day-recipe-meta {
   font-size: 0.85rem;
   color: var(--color-muted);
+}
+
+/* ---------- Import ---------- */
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+.import-status {
+  margin: 0;
+  font-weight: 600;
+  text-align: center;
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+/* Hinweis oben im Formular nach einem Import */
+.form-notice {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  background: var(--color-soft);
+  border-radius: var(--radius);
+  animation: fade-up 0.3s var(--ease) both;
+}
+
+.form-notice p {
+  margin: 0;
+}
+
+.form-notice.has-warning {
+  background: var(--color-banner);
+}
+
+.form-notice a {
+  font-weight: 600;
+  color: var(--color-text);
 }
 
 /* ---------- Einkaufsliste ---------- */

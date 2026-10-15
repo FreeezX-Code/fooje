@@ -86,6 +86,14 @@ imageRemove.addEventListener('click', () => {
   showPreview(null);
 });
 
+// Bild aus einem Import übernehmen (wird wie ein selbst gewähltes Foto verkleinert und angezeigt)
+export function useImportedImage(blob) {
+  pendingImage = prepareImage(blob).finally(() => {
+    pendingImage = null;
+  });
+  return pendingImage;
+}
+
 // Wartet ggf., bis ein gerade gewähltes Foto fertig verkleinert ist
 export async function readImageChoice() {
   if (pendingImage) await pendingImage;

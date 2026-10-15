@@ -91,8 +91,8 @@
           </div>
         </details>
 
-        <!-- Runder Knopf unten rechts, gut mit dem Daumen erreichbar -->
-        <a href="#/new" class="fab new-recipe-button" aria-label="Neues Rezept">+</a>
+        <!-- Runder Knopf unten rechts, gut mit dem Daumen erreichbar: importieren oder selbst eingeben -->
+        <button id="new-recipe" type="button" class="fab new-recipe-button" aria-label="Neues Rezept">+</button>
       </div>
 
       <article id="detail-view" class="recipe-detail" hidden></article>
@@ -121,6 +121,26 @@
         </div>
         <div id="week-notes" class="week-notes" role="status" hidden></div>
         <p id="week-message" class="muted list-message"></p>
+      </div>
+
+      <div id="import-view" hidden>
+        <h2 class="form-title">Rezept importieren</h2>
+        <form id="import-form" class="form">
+          <section class="form-card">
+            <p class="muted card-hint">Link zu einer Rezept-Webseite oder einem TikTok-Video. Claude liest das Rezept aus, danach prüft ihr es im Formular und speichert.</p>
+            <label>
+              Link
+              <input name="url" type="text" inputmode="url" placeholder="https://…" autocomplete="off" autocapitalize="off" spellcheck="false">
+            </label>
+            <button id="import-paste" type="button" class="button-secondary">📋 Aus Zwischenablage einfügen</button>
+          </section>
+          <p id="import-status" class="import-status" role="status" hidden>⏳ Wird importiert … das dauert meist 10–30 Sekunden.</p>
+          <p id="import-error" class="error" role="alert"></p>
+          <div class="form-actions">
+            <button id="import-cancel" type="button" class="button-secondary">Abbrechen</button>
+            <button id="import-submit" type="submit" class="button-primary">Importieren</button>
+          </div>
+        </form>
       </div>
 
       <div id="shopping-view" hidden>
@@ -186,6 +206,7 @@
 
       <div id="form-view" hidden>
         <h2 id="form-title" class="form-title">Neues Rezept</h2>
+        <div id="form-notice" class="form-notice" hidden></div>
         <form id="recipe-form" class="form">
           <section class="form-card">
             <label>
