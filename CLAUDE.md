@@ -51,7 +51,7 @@ Das Modell so anlegen, dass später Felder und Tabellen für die Wochenplanung e
 1. **Grundgerüst, Login und Rezeptsammlung** ← AKTUELL
    - Leere PWA lokal zum Laufen bringen, dann online stellen und auf beiden Handys zum Startbildschirm hinzufügen
    - Supabase einrichten: Projekt, Tabellen, zwei Logins
-   - Rezepte anlegen, bearbeiten, löschen, ansehen
+   - Rezepte anlegen, bearbeiten, löschen, ansehen (das Formular wird später zum Prüf-Bildschirm für importierte Rezepte, siehe „Wie Rezepte in die App kommen“)
    - Liste mit Suche und Filter nach Hauptkomponente und Tags
    - Änderungen erscheinen auf beiden Handys
    - Backup: alle Rezepte als JSON-Datei exportieren und wieder importieren
@@ -60,6 +60,13 @@ Das Modell so anlegen, dass später Felder und Tabellen für die Wochenplanung e
 4. Import aus Web und TikTok: Android über das Teilen-Menü (Web Share Target), iPhone über Link einfügen oder Kurzbefehl; Webrezepte über Schema.org-Daten auslesen, TikTok über Beschreibung und KI; Import als Entwurf
 
 Nur an der aktuellen Stufe arbeiten. Spätere Stufen nicht vorwegnehmen.
+
+## Wie Rezepte in die App kommen
+
+- **Hauptweg ist der Import:** Rezepte werden vor allem aus geteilten Websites und Videos (z. B. TikTok) angelegt, mit KI-Unterstützung durch Claude (Stufe 4). Von Hand abtippen ist nur die Notlösung.
+- **Das Formular ist der Prüf-Bildschirm:** Ein Import erzeugt einen Entwurf, der im normalen Rezeptformular vorausgefüllt geöffnet wird. Dort wird geprüft, korrigiert und gespeichert. Das Formular muss deshalb gut mit vorausgefüllten Daten funktionieren.
+- **KI-Anbindung:** Die App ruft eine Supabase-Funktion auf, diese fragt Claude über die Anthropic-API. Der API-Schlüssel liegt nur in der Supabase-Funktion. Dafür wird in Stufe 4 ein Anthropic-Konto nötig.
+- **Übergangslösung bis Stufe 4:** Links oder Videobeschreibungen im Chat an Claude Code geben. Claude erstellt daraus eine JSON-Datei im Format des Backup-Imports (Stufe 1), die in der App importiert wird.
 
 ## Bedienung
 
