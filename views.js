@@ -47,7 +47,9 @@ function recipeImage(recipe, imageUrl, className) {
     img.crossOrigin = 'anonymous';
     return img;
   }
-  return el('div', 'recipe-placeholder ' + className, MAIN_COMPONENT_ICONS[recipe.main_component] || '🍽️');
+  const placeholder = el('div', 'recipe-placeholder ' + className, MAIN_COMPONENT_ICONS[recipe.main_component] || '🍽️');
+  placeholder.dataset.main = recipe.main_component; // für den Farbton in style.css
+  return placeholder;
 }
 
 // z. B. "30 Min. · Vegetarisch"
@@ -58,9 +60,9 @@ function metaLine(recipe) {
   return parts.join(' · ');
 }
 
-// z. B. "200 g Nudeln" oder "etwas Salz"
-function ingredientText(ingredient) {
-  return [ingredient.amount, ingredient.unit, ingredient.name].filter(Boolean).join(' ');
+// z. B. "200 g" oder "etwas"
+function quantityText(ingredient) {
+  return [ingredient.amount, ingredient.unit].filter(Boolean).join(' ');
 }
 
 function formatDate(isoDate) {
@@ -89,14 +91,18 @@ export function renderChips(container, options, selected, onToggle) {
 export function renderRecipeList(container, recipes, imageUrls) {
   container.replaceChildren();
   for (const recipe of recipes) {
+    // Karte: Foto in voller Breite, darunter Name (+ ★) und Eckdaten
     const link = el('a', 'recipe-card');
     link.href = '#/recipe/' + recipe.id;
 
-    const text = el('div', 'recipe-card-text');
-    text.append(el('span', 'recipe-card-name', recipe.name), el('span', 'recipe-card-meta', metaLine(recipe)));
+    const title = el('div', 'recipe-card-title');
+    title.append(el('span', 'recipe-card-name', recipe.name));
+    if (recipe.is_favorite) title.append(el('span', 'favorite', '★'));
 
-    link.append(recipeImage(recipe, imageUrls[recipe.image_path], 'recipe-image-small'), text);
-    if (recipe.is_favorite) link.append(el('span', 'favorite', '★'));
+    const body = el('div', 'recipe-card-body');
+    body.append(title, el('span', 'recipe-card-meta', metaLine(recipe)));
+
+    link.append(recipeImage(recipe, imageUrls[recipe.image_path], 'recipe-card-image'), body);
 
     const item = el('li');
     item.append(link);
@@ -112,23 +118,25 @@ export function renderRecipeDetail(container, recipe, imageUrl, onDelete) {
   back.href = '#';
   container.append(back);
 
-  container.append(recipeImage(recipe, imageUrl, 'recipe-image-large'));
+  container.append(recipeImage(recipe, imageUrl, 'recipe-hero'));
 
   const title = el('h2', 'recipe-title', recipe.name);
   if (recipe.is_favorite) title.append(el('span', 'favorite', ' ★'));
   container.append(title);
 
-  // Eckdaten
-  const facts = el('dl', 'recipe-facts');
-  const addFact = (label, value) => {
-    if (!value) return;
-    facts.append(el('dt', null, label), el('dd', null, value));
+  // Eckdaten als kleine Kärtchen
+  const facts = el('ul', 'facts');
+  const addFact = (icon, text) => {
+    if (!text) return;
+    const fact = el('li', 'fact');
+    fact.append(el('span', 'fact-icon', icon), el('span', null, text));
+    facts.append(fact);
   };
-  addFact('Portionen', recipe.servings);
-  addFact('Zeit', recipe.prep_time_minutes ? recipe.prep_time_minutes + ' Min.' : null);
-  addFact('Hauptkomponente', MAIN_COMPONENT_LABELS[recipe.main_component]);
-  addFact('Beilage', SIDE_DISH_LABELS[recipe.side_dish]);
-  addFact('Zuletzt gekocht', recipe.last_cooked_on ? formatDate(recipe.last_cooked_on) : null);
+  addFact('⏱', recipe.prep_time_minutes ? recipe.prep_time_minutes + ' Min.' : null);
+  addFact('👥', recipe.servings ? recipe.servings + (recipe.servings === 1 ? ' Portion' : ' Portionen') : null);
+  addFact(MAIN_COMPONENT_ICONS[recipe.main_component], MAIN_COMPONENT_LABELS[recipe.main_component]);
+  addFact('🍽', recipe.side_dish !== 'none' ? 'mit ' + SIDE_DISH_LABELS[recipe.side_dish] : null);
+  addFact('📅', recipe.last_cooked_on ? 'zuletzt ' + formatDate(recipe.last_cooked_on) : null);
   container.append(facts);
 
   if (recipe.tags.length > 0) {
@@ -137,23 +145,33 @@ export function renderRecipeDetail(container, recipe, imageUrl, onDelete) {
     container.append(tags);
   }
 
-  container.append(el('h3', null, 'Zutaten'));
+  // Zutaten: Menge links, Zutat rechts
+  const ingredientCard = el('section', 'detail-card');
+  ingredientCard.append(el('h3', null, 'Zutaten'));
   if (recipe.ingredients.length > 0) {
     const list = el('ul', 'ingredients');
-    for (const ingredient of recipe.ingredients) list.append(el('li', null, ingredientText(ingredient)));
-    container.append(list);
+    for (const ingredient of recipe.ingredients) {
+      const item = el('li');
+      item.append(el('span', 'ingredient-quantity', quantityText(ingredient)), el('span', null, ingredient.name));
+      list.append(item);
+    }
+    ingredientCard.append(list);
   } else {
-    container.append(el('p', 'muted', 'Keine Zutaten eingetragen.'));
+    ingredientCard.append(el('p', 'muted', 'Keine Zutaten eingetragen.'));
   }
+  container.append(ingredientCard);
 
-  container.append(el('h3', null, 'Zubereitung'));
+  // Zubereitung: nummerierte Schritte
+  const stepCard = el('section', 'detail-card');
+  stepCard.append(el('h3', null, 'Zubereitung'));
   if (recipe.steps.length > 0) {
     const list = el('ol', 'steps');
     for (const step of recipe.steps) list.append(el('li', null, step));
-    container.append(list);
+    stepCard.append(list);
   } else {
-    container.append(el('p', 'muted', 'Keine Schritte eingetragen.'));
+    stepCard.append(el('p', 'muted', 'Keine Schritte eingetragen.'));
   }
+  container.append(stepCard);
 
   if (isWebLink(recipe.source_url)) {
     const source = el('p', 'source');
@@ -168,7 +186,7 @@ export function renderRecipeDetail(container, recipe, imageUrl, onDelete) {
   const actions = el('div', 'detail-actions');
   const edit = el('a', 'button-primary', 'Bearbeiten');
   edit.href = '#/recipe/' + recipe.id + '/edit';
-  const remove = el('button', 'button-danger', 'Löschen');
+  const remove = el('button', 'link-button danger', 'Rezept löschen');
   remove.type = 'button';
   remove.addEventListener('click', () => onDelete(recipe));
   actions.append(edit, remove);

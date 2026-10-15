@@ -8,7 +8,7 @@
 
   <!-- PWA -->
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#4a7c59">
+  <meta name="theme-color" content="#f6f6f4">
   <link rel="icon" href="icons/icon-192.png" type="image/png">
 
   <!-- iPhone: Vollbild vom Home-Bildschirm, Name und Icon -->
@@ -23,7 +23,7 @@
 </head>
 <body>
   <header class="app-header">
-    <h1>Rezept-Wochenplaner</h1>
+    <h1>Rezepte</h1>
   </header>
 
   <main class="app-main">
@@ -31,8 +31,10 @@
       <p class="muted">Lädt …</p>
     </section>
 
-    <section id="login-view" hidden>
-      <h2>Anmelden</h2>
+    <section id="login-view" class="login" hidden>
+      <div class="login-logo" aria-hidden="true">🍲</div>
+      <h2>Willkommen</h2>
+      <p class="muted">Bitte meldet euch an, um eure Rezepte zu sehen.</p>
       <form id="login-form" class="form">
         <label>
           E-Mail
@@ -57,12 +59,9 @@
       </div>
 
       <div id="list-view">
-        <h2>Rezepte</h2>
-        <a href="#/new" class="button-primary new-recipe-button">+ Neues Rezept</a>
-
         <div id="filter-bar" class="filter-bar" hidden>
           <form id="search-form" role="search">
-            <input id="search-input" class="search-input" type="search" placeholder="Suchen: Name oder Zutat"
+            <input id="search-input" class="search-input" type="search" placeholder="Name oder Zutat suchen"
                    aria-label="Rezepte durchsuchen" enterkeyhint="search" autocomplete="off">
           </form>
           <div class="chip-row" id="main-component-chips" aria-label="Filter Hauptkomponente"></div>
@@ -70,98 +69,119 @@
           <button id="filter-reset" type="button" class="link-button" hidden>Filter zurücksetzen</button>
         </div>
 
-        <p id="list-message" class="muted"></p>
+        <p id="list-message" class="muted list-message"></p>
         <ul id="recipe-list" class="recipe-list"></ul>
 
-        <div class="backup">
-          <h3>Backup</h3>
-          <p class="muted">Alle Rezepte als Datei sichern (ohne Bilder) oder eine gesicherte Datei wieder einspielen.</p>
-          <button id="export-button" type="button" class="button-secondary">Backup speichern</button>
-          <label class="button-secondary import-button">
-            Backup einspielen
-            <input id="import-input" type="file" hidden>
-          </label>
-          <p id="backup-message" class="muted" role="status"></p>
-        </div>
+        <details class="settings">
+          <summary>Konto &amp; Backup</summary>
+          <div class="settings-body">
+            <p class="muted">Angemeldet als <span id="user-email"></span></p>
+            <button id="logout-button" type="button" class="button-secondary">Abmelden</button>
 
-        <div class="account">
-          <p class="muted">Angemeldet als <span id="user-email"></span></p>
-          <button id="logout-button" type="button" class="button-secondary">Abmelden</button>
-        </div>
+            <h3>Backup</h3>
+            <p class="muted">Alle Rezepte als Datei sichern (ohne Bilder) oder eine gesicherte Datei wieder einspielen.</p>
+            <button id="export-button" type="button" class="button-secondary">Backup speichern</button>
+            <label class="button-secondary import-button">
+              Backup einspielen
+              <input id="import-input" type="file" hidden>
+            </label>
+            <p id="backup-message" class="muted" role="status"></p>
+          </div>
+        </details>
+
+        <!-- Runder Knopf unten rechts, gut mit dem Daumen erreichbar -->
+        <a href="#/new" class="fab new-recipe-button" aria-label="Neues Rezept">+</a>
       </div>
 
       <article id="detail-view" class="recipe-detail" hidden></article>
 
       <div id="form-view" hidden>
-        <h2 id="form-title">Neues Rezept</h2>
+        <h2 id="form-title" class="form-title">Neues Rezept</h2>
         <form id="recipe-form" class="form">
-          <label>
-            Name
-            <input name="name" type="text" required autocomplete="off">
-          </label>
-          <div class="form-group">
-            <span class="field-label">Bild</span>
-            <img id="image-preview" class="image-preview" alt="Vorschau des Rezeptbilds" hidden>
-            <label class="button-secondary file-button">
-              <span id="image-pick-text">Foto auswählen</span>
-              <input id="image-input" type="file" accept="image/*" hidden>
-            </label>
-            <button id="image-remove" type="button" class="button-danger" hidden>Bild entfernen</button>
-            <p id="image-error" class="error" role="alert"></p>
-          </div>
-          <label>
-            Hauptkomponente
-            <select name="main_component" required>
-              <option value="" disabled selected>Bitte wählen</option>
-            </select>
-          </label>
-          <label>
-            Beilage
-            <select name="side_dish"></select>
-          </label>
-          <div class="form-row">
+          <section class="form-card">
             <label>
-              Portionen
-              <input name="servings" type="number" min="1" step="1" inputmode="numeric">
+              Name
+              <input name="name" type="text" required autocomplete="off" placeholder="z. B. Gemüse-Lasagne">
             </label>
-            <label>
-              Zeit (Min.)
-              <input name="prep_time_minutes" type="number" min="0" step="1" inputmode="numeric">
-            </label>
-          </div>
 
-          <fieldset class="form-group">
-            <legend>Zutaten</legend>
+            <div class="image-field">
+              <img id="image-preview" class="image-preview" alt="Vorschau des Rezeptbilds" hidden>
+              <div class="image-actions">
+                <label class="image-pick">
+                  <span aria-hidden="true">📷</span>
+                  <span id="image-pick-text">Foto hinzufügen</span>
+                  <input id="image-input" type="file" accept="image/*" hidden>
+                </label>
+                <button id="image-remove" type="button" class="image-remove" hidden>Entfernen</button>
+              </div>
+              <p id="image-error" class="error" role="alert"></p>
+            </div>
+
+            <div class="form-row">
+              <label>
+                Hauptkomponente
+                <select name="main_component" required>
+                  <option value="" disabled selected>Bitte wählen</option>
+                </select>
+              </label>
+              <label>
+                Beilage
+                <select name="side_dish"></select>
+              </label>
+            </div>
+            <div class="form-row">
+              <label>
+                Portionen
+                <input name="servings" type="number" min="1" step="1" inputmode="numeric">
+              </label>
+              <label>
+                Zeit (Min.)
+                <input name="prep_time_minutes" type="number" min="0" step="1" inputmode="numeric">
+              </label>
+            </div>
+          </section>
+
+          <section class="form-card">
+            <h3>Zutaten</h3>
             <div id="ingredient-rows" class="rows"></div>
-            <button id="add-ingredient" type="button" class="button-secondary">+ Zutat</button>
-          </fieldset>
+            <button id="add-ingredient" type="button" class="add-button">+ Zutat hinzufügen</button>
+          </section>
 
-          <fieldset class="form-group">
-            <legend>Zubereitung</legend>
+          <section class="form-card">
+            <h3>Zubereitung</h3>
             <div id="step-rows" class="rows"></div>
-            <button id="add-step" type="button" class="button-secondary">+ Schritt</button>
-          </fieldset>
+            <button id="add-step" type="button" class="add-button">+ Schritt hinzufügen</button>
+          </section>
 
-          <label>
-            Tags
-            <input name="tags" type="text" placeholder="z. B. schnell, Sommer" autocomplete="off">
-          </label>
-          <label>
-            Quelle (Link)
-            <input name="source_url" type="url" placeholder="https://…" inputmode="url" autocomplete="off">
-          </label>
-          <label>
-            Zuletzt gekocht
-            <input name="last_cooked_on" type="date">
-          </label>
-          <label class="checkbox-label">
-            <input name="is_favorite" type="checkbox">
-            Favorit
-          </label>
+          <details id="more-details" class="form-card more-details">
+            <summary>Weitere Angaben <span class="muted">(Tags, Quelle, Favorit …)</span></summary>
+            <div class="more-details-body">
+              <label>
+                Tags
+                <input name="tags" type="text" placeholder="z. B. schnell, Sommer" autocomplete="off">
+              </label>
+              <label>
+                Quelle (Link)
+                <input name="source_url" type="url" placeholder="https://…" inputmode="url" autocomplete="off">
+              </label>
+              <label>
+                Zuletzt gekocht
+                <input name="last_cooked_on" type="date">
+              </label>
+              <label class="checkbox-label">
+                <input name="is_favorite" type="checkbox">
+                Favorit
+              </label>
+            </div>
+          </details>
 
           <p id="form-error" class="error" role="alert"></p>
-          <button id="save-button" type="submit" class="button-primary">Speichern</button>
-          <button id="cancel-button" type="button" class="button-secondary">Abbrechen</button>
+
+          <!-- Bleibt unten am Bildschirm stehen, damit man nicht ans Ende scrollen muss -->
+          <div class="form-actions">
+            <button id="cancel-button" type="button" class="button-secondary">Abbrechen</button>
+            <button id="save-button" type="submit" class="button-primary">Speichern</button>
+          </div>
         </form>
       </div>
     </section>

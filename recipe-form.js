@@ -6,6 +6,7 @@ const form = document.getElementById('recipe-form');
 const formTitle = document.getElementById('form-title');
 const ingredientRows = document.getElementById('ingredient-rows');
 const stepRows = document.getElementById('step-rows');
+const moreDetails = document.getElementById('more-details');
 
 const imagePreview = document.getElementById('image-preview');
 const imageInput = document.getElementById('image-input');
@@ -44,7 +45,8 @@ function showPreview(url) {
   if (url) imagePreview.src = url;
   else imagePreview.removeAttribute('src');
   imageRemove.hidden = !url;
-  imagePickText.textContent = url ? 'Anderes Foto auswählen' : 'Foto auswählen';
+  imagePickText.textContent = url ? 'Anderes Foto' : 'Foto hinzufügen';
+  imagePickText.parentElement.classList.toggle('has-image', Boolean(url));
 }
 
 function releasePreview() {
@@ -118,17 +120,26 @@ function removeButton(row) {
   return button;
 }
 
+// Eine Zeile pro Zutat: [Menge mit Einheit] [Zutat] [✕]
+// Menge und Einheit stehen zusammen in einem Feld, z. B. "200 g" oder "etwas".
 function addIngredientRow(ingredient = {}) {
   const row = document.createElement('div');
   row.className = 'ingredient-row';
+  const quantity = [ingredient.amount, ingredient.unit].filter(Boolean).join(' ');
   row.append(
+    textInput('ingredient-quantity', 'Menge', quantity),
     textInput('ingredient-name', 'Zutat', ingredient.name),
-    textInput('ingredient-amount', 'Menge', ingredient.amount),
-    textInput('ingredient-unit', 'Einheit', ingredient.unit),
     removeButton(row)
   );
   ingredientRows.append(row);
   return row;
+}
+
+// "200 g" → Menge "200", Einheit "g"; "1/2 TL" → "1/2", "TL"; "etwas" → "etwas", ""
+// Regel: das erste Wort ist die Menge, der Rest die Einheit.
+function splitQuantity(text) {
+  const [amount = '', ...unit] = text.trim().split(/\s+/);
+  return { amount, unit: unit.join(' ') };
 }
 
 function addStepRow(text = '') {
@@ -145,7 +156,7 @@ function addStepRow(text = '') {
 }
 
 document.getElementById('add-ingredient').addEventListener('click', () => {
-  addIngredientRow().querySelector('.ingredient-name').focus();
+  addIngredientRow().querySelector('.ingredient-quantity').focus();
 });
 document.getElementById('add-step').addEventListener('click', () => {
   addStepRow().querySelector('textarea').focus();
@@ -173,6 +184,11 @@ export function fillRecipeForm(recipe, imageUrl = null) {
   field('last_cooked_on').value = recipe?.last_cooked_on ?? '';
   field('is_favorite').checked = recipe?.is_favorite ?? false;
 
+  // "Weitere Angaben" aufklappen, wenn dort schon etwas eingetragen ist
+  moreDetails.open = Boolean(
+    recipe && (recipe.tags.length > 0 || recipe.source_url || recipe.last_cooked_on || recipe.is_favorite)
+  );
+
   ingredientRows.replaceChildren();
   const ingredients = recipe?.ingredients ?? [];
   ingredients.forEach((ingredient) => addIngredientRow(ingredient));
@@ -199,8 +215,7 @@ export function readRecipeForm() {
   const ingredients = [...ingredientRows.querySelectorAll('.ingredient-row')]
     .map((row) => ({
       name: row.querySelector('.ingredient-name').value.trim(),
-      amount: row.querySelector('.ingredient-amount').value.trim(),
-      unit: row.querySelector('.ingredient-unit').value.trim(),
+      ...splitQuantity(row.querySelector('.ingredient-quantity').value),
     }))
     .filter((ingredient) => ingredient.name !== '');
 
