@@ -2,7 +2,7 @@
 // Strategie "erst Netz, dann Zwischenspeicher": Mit Netz kommt immer die neueste Version,
 // ohne Netz die zuletzt gespeicherte. So muss bei Änderungen nichts von Hand erneuert werden.
 
-const CACHE_NAME = 'app-shell-v14';
+const CACHE_NAME = 'app-shell-v15';
 
 // Eigener Zwischenspeicher für Rezeptbilder (gleicher Name wie in offline.js,
 // das ihn beim Abmelden löscht). Wird bei neuen App-Versionen nicht geleert.
@@ -20,6 +20,8 @@ const APP_FILES = [
   './offline.js',
   './backup.js',
   './week.js',
+  './planner.js',
+  './rules-form.js',
   './config.js',
   './manifest.json',
   './icons/icon-192.png',

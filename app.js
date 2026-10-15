@@ -2,12 +2,14 @@
 import {
   onAuthChange, signIn, signOut, hasStoredSession, getCurrentSession,
   fetchRecipes, createRecipe, updateRecipe, deleteRecipe, insertRecipes,
-  subscribeToRecipeChanges, unsubscribeFromRecipeChanges, fetchPlanDays,
+  subscribeToRecipeChanges, unsubscribeFromRecipeChanges, fetchPlanDays, fetchPlannerRules, savePlannerRules,
   uploadImage, deleteImage, getImageUrls,
 } from './db.js';
 import { saveRecipeCache, readRecipeCache, clearRecipeCache } from './offline.js';
 import { createBackupFile, shareOrDownload, parseBackup } from './backup.js';
 import { renderWeek, startOfWeek, addDays, toIsoDate, parseIsoDate, isoWeekNumber, weekRangeLabel } from './week.js';
+import { normalizeRules, checkRules } from './planner.js';
+import { fillRulesForm, readRulesForm } from './rules-form.js';
 import { renderRecipeList, renderSkeletonList, renderRecipeDetail, renderChips, MAIN_COMPONENT_LABELS } from './views.js';
 import { fillRecipeForm, readRecipeForm, readImageChoice } from './recipe-form.js';
 import { collectTags, filterRecipes, isFilterActive } from './filter.js';
@@ -50,6 +52,12 @@ const weekNext = document.getElementById('week-next');
 const weekToday = document.getElementById('week-today');
 const weekMessage = document.getElementById('week-message');
 const weekDays = document.getElementById('week-days');
+const rulesView = document.getElementById('rules-view');
+const rulesForm = document.getElementById('rules-form');
+const rulesMessage = document.getElementById('rules-message');
+const rulesProblems = document.getElementById('rules-problems');
+const rulesSave = document.getElementById('rules-save');
+const rulesCancel = document.getElementById('rules-cancel');
 const pageTitle = document.getElementById('page-title');
 const tabBar = document.getElementById('tab-bar');
 
@@ -68,6 +76,8 @@ let isOffline = false; // true = keine Verbindung, es wird der gespeicherte Stan
 let animateList = false; // true = Karten beim nächsten Anzeigen einschweben lassen
 let planEntries = {}; // geladene Tage des Wochenplans: { "2026-10-19": Eintrag, … }
 let weekMonday = startOfWeek(new Date()); // Montag der angezeigten Woche
+let plannerRules = null; // Regeln für den Generator (geladen beim Öffnen der Regel-Seite)
+let rulesEdited = false; // true, sobald auf der Regel-Seite etwas geändert wurde
 let currentView = null; // gerade sichtbare Ansicht (für die Einblend-Animation)
 
 // Aktuelle Suche/Filter der Liste (bleiben erhalten, wenn man in ein Rezept und zurück geht)
@@ -113,6 +123,7 @@ function showView(session) {
   imageUrls = {};
   imageUrlsLoadedAt = 0;
   planEntries = {};
+  plannerRules = null;
   clearRecipeCache();
   setOffline(false);
   loadingView.hidden = true;
@@ -289,6 +300,70 @@ async function loadWeek(monday, showLoading) {
   if (toIsoDate(monday) === toIsoDate(weekMonday)) renderWeek(weekDays, monday, planEntries, recipes, imageUrls);
 }
 
+// ---- Regeln für den Wochenplan ----
+
+// Zeigt sofort die bekannten Regeln (falls schon geladen) und holt dann den aktuellen Stand.
+// Hat man inzwischen etwas geändert, wird die Eingabe nicht überschrieben.
+async function openRules() {
+  rulesEdited = false;
+  rulesProblems.replaceChildren();
+  if (plannerRules) {
+    fillRulesForm(plannerRules);
+  } else {
+    rulesMessage.textContent = 'Regeln werden geladen …';
+    rulesSave.disabled = true;
+  }
+  try {
+    plannerRules = normalizeRules(await fetchPlannerRules());
+    if (!rulesEdited) fillRulesForm(plannerRules);
+    rulesMessage.textContent = '';
+    rulesSave.disabled = false;
+  } catch (error) {
+    console.error(error);
+    rulesMessage.textContent = 'Regeln konnten nicht geladen werden. Bitte Internet prüfen.';
+  }
+}
+
+function showRuleProblems(lines, className) {
+  rulesProblems.replaceChildren(...lines.map((line) => {
+    const p = document.createElement('p');
+    p.className = className;
+    p.textContent = line;
+    return p;
+  }));
+}
+
+rulesForm.addEventListener('input', () => {
+  rulesEdited = true;
+  rulesProblems.replaceChildren();
+});
+
+rulesForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const rules = readRulesForm();
+  const { errors, warnings } = checkRules(rules);
+  if (errors.length > 0) {
+    showRuleProblems(errors, 'error');
+    return;
+  }
+  if (warnings.length > 0 && !confirm(warnings.join('\n') + '\n\nTrotzdem speichern?')) return;
+
+  rulesSave.disabled = true;
+  rulesSave.textContent = 'Speichert …';
+  try {
+    plannerRules = normalizeRules(await savePlannerRules(rules));
+    location.replace('#/week');
+  } catch (error) {
+    console.error(error);
+    showRuleProblems(['Speichern fehlgeschlagen: ' + saveErrorText(error)], 'error');
+  } finally {
+    rulesSave.disabled = false;
+    rulesSave.textContent = 'Speichern';
+  }
+});
+
+rulesCancel.addEventListener('click', () => location.replace('#/week'));
+
 // ‹ und ›: replace, damit "Zurück" den Wochenplan verlässt statt durch alle Wochen zu blättern
 weekPrev.addEventListener('click', () => location.replace('#/week/' + toIsoDate(addDays(weekMonday, -7))));
 weekNext.addEventListener('click', () => location.replace('#/week/' + toIsoDate(addDays(weekMonday, 7))));
@@ -362,7 +437,7 @@ function showRoute() {
 // refreshView: nach geänderten Daten. Bleibt an der Stelle stehen und lässt ein
 // offenes Formular in Ruhe – sonst wären die Eingaben weg.
 function refreshView() {
-  if (!formView.hidden) return;
+  if (!formView.hidden || !rulesView.hidden) return;
   renderRoute();
 }
 
@@ -378,6 +453,15 @@ function renderRoute() {
     // "#/week" = aktuelle Woche, "#/week/2026-10-26" = Woche mit diesem Tag
     showWeek(startOfWeek(weekMatch[1] ? parseIsoDate(weekMatch[1]) : new Date()));
     view = weekView;
+  } else if (hash === '#/rules') {
+    // Offline kann nichts gespeichert werden, dann bleibt es beim Wochenplan
+    if (isOffline) {
+      showWeek(weekMonday);
+      view = weekView;
+    } else {
+      openRules();
+      view = rulesView;
+    }
   } else if (isOffline && (hash === '#/new' || editMatch)) {
     // Offline kann nichts gespeichert werden, also auch kein Formular öffnen
     view = listView;
@@ -396,19 +480,20 @@ function renderRoute() {
     view = detailView;
   }
 
-  for (const v of [listView, detailView, formView, weekView]) v.hidden = v !== view;
+  for (const v of [listView, detailView, formView, weekView, rulesView]) v.hidden = v !== view;
   formError.textContent = '';
 
   // Leiste unten: aktiven Reiter markieren, Überschrift anpassen.
-  // Im Formular ausblenden, dort stehen unten "Speichern/Abbrechen".
-  const activeTab = view === weekView ? 'week' : 'recipes';
+  // In Formularen ausblenden, dort stehen unten "Speichern/Abbrechen".
+  const activeTab = view === weekView || view === rulesView ? 'week' : 'recipes';
   for (const tab of tabBar.querySelectorAll('.tab')) {
     if (tab.dataset.tab === activeTab) tab.setAttribute('aria-current', 'page');
     else tab.removeAttribute('aria-current');
   }
   pageTitle.textContent = activeTab === 'week' ? 'Wochenplan' : 'Rezepte';
-  tabBar.hidden = view === formView;
-  document.body.classList.toggle('has-tab-bar', view !== formView);
+  const isForm = view === formView || view === rulesView;
+  tabBar.hidden = isForm;
+  document.body.classList.toggle('has-tab-bar', !isForm);
 
   // Neue Ansicht sanft einblenden (Klasse kurz entfernen, damit die Animation neu startet)
   if (view !== currentView) {

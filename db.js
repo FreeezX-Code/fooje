@@ -80,6 +80,19 @@ export async function fetchPlanDays(from, to) {
   return data;
 }
 
+// Regeln für den Generator (genau eine Zeile mit id 1)
+export async function fetchPlannerRules() {
+  const { data, error } = await supabase.from('planner_settings').select('rules').eq('id', 1).maybeSingle();
+  if (error) throw error;
+  return data?.rules ?? null;
+}
+
+export async function savePlannerRules(rules) {
+  const { data, error } = await supabase.from('planner_settings').update({ rules }).eq('id', 1).select('rules').single();
+  if (error) throw error;
+  return data.rules;
+}
+
 // ---- Live-Abgleich (Supabase Realtime) ----
 
 let recipeChannel = null;

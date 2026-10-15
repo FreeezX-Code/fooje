@@ -106,9 +106,61 @@
           </div>
           <button id="week-next" type="button" class="week-nav" aria-label="Nächste Woche">›</button>
         </div>
-        <button id="week-today" type="button" class="link-button week-today" hidden>Zur aktuellen Woche</button>
+        <div class="week-actions">
+          <button id="week-today" type="button" class="link-button" hidden>Zur aktuellen Woche</button>
+          <a href="#/rules" class="pill-button week-rules-button">⚙ Regeln</a>
+        </div>
         <p id="week-message" class="muted list-message"></p>
         <ul id="week-days" class="week-days"></ul>
+      </div>
+
+      <div id="rules-view" hidden>
+        <h2 class="form-title">Regeln für den Wochenplan</h2>
+        <p id="rules-message" class="muted list-message"></p>
+        <form id="rules-form" class="form">
+          <section class="form-card">
+            <h3>Pro Woche</h3>
+            <p class="muted card-hint">Wie oft soll jede Hauptkomponente höchstens bzw. mindestens vorkommen?</p>
+            <div id="rule-components" class="rule-components"></div>
+          </section>
+
+          <section class="form-card">
+            <h3>Abwechslung</h3>
+            <label class="switch-label">
+              <span>Nicht zweimal hintereinander dieselbe Hauptkomponente</span>
+              <input name="no_repeat_main_component" type="checkbox" class="switch">
+            </label>
+            <label class="switch-label">
+              <span>Nicht zweimal hintereinander dieselbe Beilage</span>
+              <input name="no_repeat_side_dish" type="checkbox" class="switch">
+            </label>
+            <label>
+              Rezepte aus den letzten Wochen meiden
+              <select name="avoid_recent_weeks">
+                <option value="0">aus</option>
+                <option value="1">1 Woche</option>
+                <option value="2">2 Wochen</option>
+                <option value="3">3 Wochen</option>
+                <option value="4">4 Wochen</option>
+              </select>
+            </label>
+          </section>
+
+          <section class="form-card">
+            <h3>Vorlieben</h3>
+            <label class="switch-label">
+              <span>Favoriten bevorzugen</span>
+              <input name="prefer_favorites" type="checkbox" class="switch">
+            </label>
+          </section>
+
+          <div id="rules-problems" class="rules-problems" role="alert"></div>
+
+          <div class="form-actions">
+            <button id="rules-cancel" type="button" class="button-secondary">Abbrechen</button>
+            <button id="rules-save" type="submit" class="button-primary">Speichern</button>
+          </div>
+        </form>
       </div>
 
       <div id="form-view" hidden>

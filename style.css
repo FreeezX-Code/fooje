@@ -671,10 +671,39 @@ body.has-tab-bar .fab {
   transform: scale(0.9);
 }
 
-.week-today {
-  align-self: center;
-  display: block;
-  margin: 0 auto;
+.week-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 44px;
+  margin-top: 8px;
+}
+
+.week-actions .week-rules-button {
+  margin-left: auto;
+}
+
+/* Kleiner, runder Knopf (z. B. "⚙ Regeln") */
+.pill-button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 14px;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text);
+  text-decoration: none;
+  background: var(--color-surface);
+  border: none;
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: transform 0.15s var(--ease);
+}
+
+.pill-button:active {
+  transform: scale(0.95);
 }
 
 .week-days {
@@ -797,6 +826,105 @@ a.day-card:active {
 .day-recipe-meta {
   font-size: 0.85rem;
   color: var(--color-muted);
+}
+
+/* ---------- Regeln für den Wochenplan ---------- */
+
+.card-hint {
+  margin: -6px 0 0;
+  font-size: 0.9rem;
+}
+
+/* Zeile: Name | mindestens | höchstens */
+.rule-components {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rule-row {
+  display: grid;
+  grid-template-columns: 1fr 4.2em 6.2em;
+  gap: 6px;
+  align-items: center;
+}
+
+.rule-row select {
+  padding-left: 10px;
+  padding-right: 26px;
+  background-position: calc(100% - 15px) 50%, calc(100% - 10px) 50%;
+}
+
+.rule-head {
+  margin-bottom: -4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+.rule-name {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Schalter im iPhone-Stil (ein Ankreuzfeld, anders gestaltet) */
+.form .switch-label {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+  font-size: 1rem;
+  font-weight: normal;
+  color: var(--color-text);
+}
+
+.form input.switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 51px;
+  min-height: 0;
+  height: 31px;
+  padding: 0;
+  background: var(--color-border);
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color 0.25s var(--ease);
+}
+
+.form input.switch::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 27px;
+  height: 27px;
+  background: #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+  transition: transform 0.25s var(--ease), background-color 0.25s;
+}
+
+.form input.switch:checked {
+  background: var(--color-primary);
+}
+
+.form input.switch:checked::before {
+  background: var(--color-on-primary);
+  transform: translateX(20px);
+}
+
+.rules-problems {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rules-problems:empty {
+  display: none;
 }
 
 /* ---------- Konto & Backup (aufklappbar) ---------- */
