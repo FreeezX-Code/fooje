@@ -117,9 +117,21 @@
           <button id="plan-week" type="button" class="button-primary" hidden>🎲 Woche planen</button>
           <button id="reroll-week" type="button" class="link-button" hidden>Alles neu würfeln</button>
           <button id="purchase-week" type="button" class="link-button" hidden>🛒 Alles als gekauft markieren</button>
+          <button id="open-shopping" type="button" class="button-secondary" hidden>🧾 Einkaufsliste</button>
         </div>
         <div id="week-notes" class="week-notes" role="status" hidden></div>
         <p id="week-message" class="muted list-message"></p>
+      </div>
+
+      <div id="shopping-view" hidden>
+        <h2 class="form-title">Einkaufsliste</h2>
+        <p id="shopping-week" class="muted shopping-week"></p>
+        <div id="shopping-content" class="form"></div>
+        <p id="shopping-message" class="muted list-message" role="status"></p>
+        <div class="form-actions shopping-actions">
+          <button id="shopping-back" type="button" class="button-secondary">Zurück</button>
+          <button id="shopping-share" type="button" class="button-primary">Als Text teilen</button>
+        </div>
       </div>
 
       <div id="rules-view" hidden>

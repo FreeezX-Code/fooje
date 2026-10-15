@@ -458,7 +458,7 @@ body.has-tab-bar .fab {
 .offline .new-recipe-button,
 .offline .detail-actions,
 .offline .import-button,
-.offline .plan-actions,
+.offline .plan-actions > :not(#open-shopping),
 .offline .week-rules-button {
   display: none;
 }
@@ -951,6 +951,156 @@ body.has-tab-bar .fab {
 .day-recipe-meta {
   font-size: 0.85rem;
   color: var(--color-muted);
+}
+
+/* ---------- Einkaufsliste ---------- */
+
+.plan-actions #open-shopping {
+  margin-top: 8px;
+}
+
+.shopping-week {
+  margin: -10px 0 16px;
+}
+
+.shopping-days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.shopping-days .chip {
+  white-space: normal;
+  text-align: left;
+}
+
+/* Portionen: Name | − 4 Port. + */
+.servings-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 52px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.servings-row:last-child {
+  border-bottom: none;
+}
+
+.servings-name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.servings-unknown {
+  font-size: 0.85rem;
+}
+
+.stepper {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.stepper-button {
+  width: 40px;
+  height: 40px;
+  font: inherit;
+  font-size: 1.3rem;
+  line-height: 1;
+  color: var(--color-text);
+  background: var(--color-field);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.15s var(--ease);
+}
+
+.stepper-button:active {
+  transform: scale(0.9);
+}
+
+.stepper-button:disabled {
+  opacity: 0.4;
+}
+
+.stepper-value {
+  min-width: 64px;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* Zutaten zum Abhaken */
+.shopping-items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.shopping-item {
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  min-height: 56px;
+  padding: 8px 0;
+  font: inherit;
+  color: var(--color-text);
+  text-align: left;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  cursor: pointer;
+}
+
+.shopping-items li:last-child .shopping-item {
+  border-bottom: none;
+}
+
+.shopping-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-on-primary);
+  background: var(--color-primary);
+  border: 2px solid var(--color-primary);
+  border-radius: 50%;
+  transition: background-color 0.2s, border-color 0.2s, transform 0.15s var(--ease);
+}
+
+.shopping-item:active .shopping-check {
+  transform: scale(0.85);
+}
+
+.shopping-item.is-unchecked .shopping-check {
+  background: transparent;
+  border-color: var(--color-border);
+}
+
+.shopping-item-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.shopping-item-line {
+  overflow-wrap: anywhere;
+  transition: color 0.2s;
+}
+
+.shopping-item.is-unchecked .shopping-item-line {
+  color: var(--color-muted);
+  text-decoration: line-through;
+}
+
+.shopping-item-sources {
+  font-size: 0.8rem;
 }
 
 /* ---------- Menü von unten ("Bottom Sheet") ---------- */

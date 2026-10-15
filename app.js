@@ -12,6 +12,7 @@ import {
   renderWeek, startOfWeek, addDays, toIsoDate, parseIsoDate, isoWeekNumber, weekRangeLabel, formatDayLong, formatDayShort,
 } from './week.js';
 import { openSheet, openRecipePicker } from './sheet.js';
+import { aggregateIngredients, renderShopping, shoppingListText } from './shopping.js';
 import { normalizeRules, checkRules, generateWeek } from './planner.js';
 import { fillRulesForm, readRulesForm } from './rules-form.js';
 import { renderRecipeList, renderSkeletonList, renderRecipeDetail, renderChips, MAIN_COMPONENT_LABELS } from './views.js';
@@ -59,6 +60,14 @@ const weekDays = document.getElementById('week-days');
 const planWeekButton = document.getElementById('plan-week');
 const rerollWeekButton = document.getElementById('reroll-week');
 const purchaseWeekButton = document.getElementById('purchase-week');
+const openShoppingButton = document.getElementById('open-shopping');
+
+const shoppingView = document.getElementById('shopping-view');
+const shoppingWeek = document.getElementById('shopping-week');
+const shoppingContent = document.getElementById('shopping-content');
+const shoppingMessage = document.getElementById('shopping-message');
+const shoppingBack = document.getElementById('shopping-back');
+const shoppingShare = document.getElementById('shopping-share');
 const weekNotes = document.getElementById('week-notes');
 const rulesView = document.getElementById('rules-view');
 const rulesForm = document.getElementById('rules-form');
@@ -85,6 +94,15 @@ let animateList = false; // true = Karten beim nächsten Anzeigen einschweben la
 let planEntries = {}; // geladene Tage des Wochenplans: { "2026-10-19": Eintrag, … }
 let weekMonday = startOfWeek(new Date()); // Montag der angezeigten Woche
 let showPastDays = false; // vergangene Tage der Woche eingeblendet?
+
+// Einkaufsliste: Auswahl bleibt erhalten, solange man in derselben Woche bleibt
+const shopping = {
+  monday: null,         // "JJJJ-MM-TT" der Woche
+  days: new Set(),      // ausgewählte Tage
+  daysTouched: false,   // Auswahl schon von Hand geändert?
+  servings: new Map(),  // Tag → gewünschte Portionen
+  unchecked: new Set(), // abgewählte Zutaten (key)
+};
 let plannerRules = null; // Regeln für den Generator (geladen beim Öffnen der Regel-Seite)
 let rulesEdited = false; // true, sobald auf der Regel-Seite etwas geändert wurde
 let currentView = null; // gerade sichtbare Ansicht (für die Einblend-Animation)
@@ -135,6 +153,7 @@ function showView(session) {
   imageUrlsLoadedAt = 0;
   planEntries = {};
   plannerRules = null;
+  shopping.monday = null;
   clearRecipeCache();
   setOffline(false);
   loadingView.hidden = true;
@@ -345,6 +364,7 @@ function updatePlanButtons() {
   planWeekButton.hidden = !weekDaysForPlanning(false).some((d) => d.fillable);
   rerollWeekButton.hidden = !weekDaysForPlanning(true).some((d) => d.fillable && d.entry?.recipe_id);
   purchaseWeekButton.hidden = !upcomingPlannedDays().some((day) => !planEntries[day].is_purchased);
+  openShoppingButton.hidden = plannedDaysOfWeek(weekMonday).length === 0;
 }
 
 // Kasten über den Tagen: Ergebnis einer Aktion, ggf. mit Hinweisen
@@ -414,6 +434,118 @@ async function planWeek(rerollAll) {
 
 planWeekButton.addEventListener('click', () => planWeek(false));
 rerollWeekButton.addEventListener('click', () => planWeek(true));
+openShoppingButton.addEventListener('click', () => {
+  location.hash = '#/shopping/' + toIsoDate(weekMonday);
+});
+
+// ---- Einkaufsliste ----
+
+// Alle Tage der Woche mit einem Gericht (nicht frei, Rezept vorhanden)
+function plannedDaysOfWeek(monday) {
+  return Array.from({ length: 7 }, (_, i) => toIsoDate(addDays(monday, i))).filter((day) => {
+    const entry = planEntries[day];
+    return entry?.recipe_id && !entry.is_day_off && recipeById(entry.recipe_id);
+  });
+}
+
+// Vorauswahl: ab heute, noch nicht gekauft
+function defaultShoppingDays(monday) {
+  const today = toIsoDate(new Date());
+  return new Set(plannedDaysOfWeek(monday).filter((day) => day >= today && !planEntries[day].is_purchased));
+}
+
+function openShopping(monday) {
+  const iso = toIsoDate(monday);
+  if (shopping.monday !== iso) {
+    Object.assign(shopping, { monday: iso, days: defaultShoppingDays(monday), daysTouched: false, servings: new Map(), unchecked: new Set() });
+  }
+  shoppingWeek.textContent = `KW ${isoWeekNumber(monday)} · ${weekRangeLabel(monday)}`;
+  shoppingMessage.textContent = '';
+  drawShopping();
+
+  // Plan der Woche frisch laden (z. B. beim direkten Öffnen); Vorauswahl anpassen, solange nichts geändert wurde
+  if (!isOffline && currentUserId) {
+    fetchPlanDays(iso, toIsoDate(addDays(monday, 6))).then((days) => {
+      for (const day of days) planEntries[day.day] = day;
+      if (!shopping.daysTouched) shopping.days = defaultShoppingDays(monday);
+      if (!shoppingView.hidden && shopping.monday === iso) drawShopping();
+    }).catch((error) => console.error(error));
+  }
+}
+
+// Ausgewählte Gerichte mit Portionen und die zusammengefasste Zutatenliste
+function currentShopping() {
+  const monday = parseIsoDate(shopping.monday);
+  const days = plannedDaysOfWeek(monday).map((day) => ({
+    day,
+    label: formatDayShort(day),
+    recipe: recipeById(planEntries[day].recipe_id),
+    purchased: planEntries[day].is_purchased,
+    selected: shopping.days.has(day),
+  }));
+  const dishes = days.filter((d) => d.selected).map((d) => ({
+    day: d.day,
+    recipe: d.recipe,
+    baseServings: d.recipe.servings,
+    servings: shopping.servings.get(d.day) ?? d.recipe.servings,
+  }));
+  const items = aggregateIngredients(dishes.map((d) => ({ recipe: d.recipe, factor: d.baseServings ? d.servings / d.baseServings : 1 })));
+  return { days, dishes, items };
+}
+
+function drawShopping() {
+  const { days, dishes, items } = currentShopping();
+  renderShopping(shoppingContent, {
+    days, dishes, items, unchecked: shopping.unchecked,
+    on: {
+      toggleDay(day) {
+        shopping.daysTouched = true;
+        if (shopping.days.has(day)) shopping.days.delete(day);
+        else shopping.days.add(day);
+        drawShopping();
+      },
+      changeServings(day, delta) {
+        const dish = dishes.find((d) => d.day === day);
+        shopping.servings.set(day, Math.max(1, dish.servings + delta));
+        drawShopping();
+      },
+      toggleItem(key) {
+        if (shopping.unchecked.has(key)) shopping.unchecked.delete(key);
+        else shopping.unchecked.add(key);
+        drawShopping();
+      },
+    },
+  });
+  shoppingShare.disabled = !items.some((item) => !shopping.unchecked.has(item.key));
+}
+
+// Nur die angehakten Zutaten
+const itemsToBuy = () => currentShopping().items.filter((item) => !shopping.unchecked.has(item.key));
+
+shoppingShare.addEventListener('click', async () => {
+  const monday = parseIsoDate(shopping.monday);
+  const text = shoppingListText(`Einkaufsliste KW ${isoWeekNumber(monday)}`, itemsToBuy());
+  shoppingMessage.textContent = '';
+  try {
+    if (navigator.share) {
+      await navigator.share({ title: 'Einkaufsliste', text });
+    } else {
+      await navigator.clipboard.writeText(text);
+      shoppingMessage.textContent = 'Liste in die Zwischenablage kopiert.';
+    }
+  } catch (error) {
+    if (error.name !== 'AbortError') {
+      console.error(error);
+      shoppingMessage.textContent = 'Teilen hat nicht geklappt.';
+    }
+  }
+});
+
+// Zurück zum Wochenplan (wirklich zurück, damit die Zurück-Geste danach nicht wieder hier landet)
+shoppingBack.addEventListener('click', () => {
+  if (history.length > 1) history.back();
+  else location.replace('#/week/' + shopping.monday);
+});
 
 // ---- Einzelne Tage bearbeiten ----
 
@@ -778,8 +910,12 @@ function renderRoute() {
 
   let view = null;
   const weekMatch = hash.match(/^#\/week(?:\/(\d{4}-\d{2}-\d{2}))?$/);
+  const shoppingMatch = hash.match(/^#\/shopping\/(\d{4}-\d{2}-\d{2})$/);
   if (hash === '#/recipes') {
     view = listView;
+  } else if (shoppingMatch) {
+    openShopping(startOfWeek(parseIsoDate(shoppingMatch[1])));
+    view = shoppingView;
   } else if (weekMatch) {
     // "#/week" = aktuelle Woche, "#/week/2026-10-26" = Woche mit diesem Tag
     showWeek(startOfWeek(weekMatch[1] ? parseIsoDate(weekMatch[1]) : new Date()));
@@ -820,20 +956,20 @@ function renderRoute() {
     view = weekView;
   }
 
-  for (const v of [listView, detailView, formView, weekView, rulesView]) v.hidden = v !== view;
+  for (const v of [listView, detailView, formView, weekView, rulesView, shoppingView]) v.hidden = v !== view;
   formError.textContent = '';
 
   // Leiste unten: aktiven Reiter markieren, Überschrift anpassen.
   // Ein Rezept gehört zu dem Reiter, von dem aus es geöffnet wurde.
   // In Formularen ausblenden, dort stehen unten "Speichern/Abbrechen".
   if (view === detailView && currentView !== detailView) detailTab = currentView === weekView ? 'week' : 'recipes';
-  const activeTab = view === weekView || view === rulesView || (view === detailView && detailTab === 'week') ? 'week' : 'recipes';
+  const activeTab = [weekView, rulesView, shoppingView].includes(view) || (view === detailView && detailTab === 'week') ? 'week' : 'recipes';
   for (const tab of tabBar.querySelectorAll('.tab')) {
     if (tab.dataset.tab === activeTab) tab.setAttribute('aria-current', 'page');
     else tab.removeAttribute('aria-current');
   }
   pageTitle.textContent = activeTab === 'week' ? 'Wochenplan' : 'Rezepte';
-  const isForm = view === formView || view === rulesView;
+  const isForm = [formView, rulesView, shoppingView].includes(view);
   tabBar.hidden = isForm;
   document.body.classList.toggle('has-tab-bar', !isForm);
 
