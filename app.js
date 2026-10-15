@@ -129,6 +129,7 @@ function showView(session) {
   // 3. Abgemeldet: Anmeldebildschirm, alles Gemerkte vom Handy löschen
   unsubscribeFromChanges();
   currentUserId = null;
+  userEmail.textContent = '';
   recipes = [];
   imageUrls = {};
   imageUrlsLoadedAt = 0;
@@ -167,6 +168,7 @@ function useCache(cache) {
 // Aktuellen Stand auf dem Handy merken (nach Laden, Speichern, Löschen):
 // Rezepte und der Wochenplan von 4 Wochen zurück bis 8 Wochen voraus
 function rememberRecipes() {
+  if (!currentUserId) return; // abgemeldet: nichts auf dem Handy speichern
   const from = toIsoDate(addDays(new Date(), -28));
   const to = toIsoDate(addDays(new Date(), 56));
   const plan = Object.fromEntries(Object.entries(planEntries).filter(([day]) => day >= from && day <= to));
@@ -301,7 +303,7 @@ function showWeek(monday) {
   // Offline nicht nachladen: Ohne gültige Anmeldung käme wegen der Zugriffsregeln eine
   // leere Liste zurück und würde den gemerkten Plan überschreiben. Neu geladen wird,
   // sobald Verbindung und Anmeldung wieder stehen (siehe retryConnection).
-  if (!isOffline) loadWeek(monday, isNewWeek);
+  if (!isOffline && currentUserId) loadWeek(monday, isNewWeek);
 }
 
 // Zeichnet die angezeigte Woche neu. highlight = Tage, die kurz aufleuchten sollen.
@@ -588,6 +590,7 @@ async function loadWeek(monday, showLoading) {
     const from = toIsoDate(monday);
     const to = toIsoDate(addDays(monday, 6));
     const days = await fetchPlanDays(from, to);
+    if (!currentUserId) return; // inzwischen abgemeldet
     // Die Tage dieser Woche komplett ersetzen, damit auch gelöschte Einträge verschwinden
     for (const iso of Object.keys(planEntries)) {
       if (iso >= from && iso <= to) delete planEntries[iso];
