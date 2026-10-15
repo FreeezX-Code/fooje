@@ -487,6 +487,7 @@ function currentShopping() {
   const dishes = days.filter((d) => d.selected).map((d) => ({
     day: d.day,
     recipe: d.recipe,
+    purchased: d.purchased,
     baseServings: d.recipe.servings,
     servings: shopping.servings.get(d.day) ?? d.recipe.servings,
   }));

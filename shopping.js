@@ -121,7 +121,7 @@ function card(title) {
 /**
  * Zeichnet die Einkaufsliste.
  *   days:   [{ day, label, recipe, purchased, selected }] – alle geplanten Tage der Woche
- *   dishes: [{ day, recipe, servings, baseServings }]     – Gerichte der ausgewählten Tage
+ *   dishes: [{ day, recipe, purchased, servings, baseServings }] – Gerichte der ausgewählten Tage
  *   items:  Ergebnis von aggregateIngredients, unchecked: Set der abgewählten Zutaten (key)
  *   on:     { toggleDay(day), changeServings(day, delta), toggleItem(key) }
  */
@@ -133,17 +133,23 @@ export function renderShopping(container, { days, dishes, items, unchecked, on }
     return;
   }
 
-  // Tage
+  // Tage – getrennt nach "noch einzukaufen" und "schon gekauft"
   const dayCard = card('Für welche Tage?');
-  const chips = el('div', 'shopping-days');
-  for (const d of days) {
-    const chip = el('button', 'chip', `${d.label} · ${d.recipe.name}${d.purchased ? ' 🛒' : ''}`);
-    chip.type = 'button';
-    chip.setAttribute('aria-pressed', String(d.selected));
-    chip.addEventListener('click', () => on.toggleDay(d.day));
-    chips.append(chip);
-  }
-  dayCard.append(chips);
+  const addDayGroup = (title, groupDays, className) => {
+    if (groupDays.length === 0) return;
+    dayCard.append(el('p', 'shopping-group-title', title));
+    const chips = el('div', 'shopping-days ' + className);
+    for (const d of groupDays) {
+      const chip = el('button', 'chip', `${d.label} · ${d.recipe.name}`);
+      chip.type = 'button';
+      chip.setAttribute('aria-pressed', String(d.selected));
+      chip.addEventListener('click', () => on.toggleDay(d.day));
+      chips.append(chip);
+    }
+    dayCard.append(chips);
+  };
+  addDayGroup('Noch einzukaufen', days.filter((d) => !d.purchased), 'is-open');
+  addDayGroup('Schon gekauft 🛒', days.filter((d) => d.purchased), 'is-purchased');
   container.append(dayCard);
 
   if (dishes.length === 0) {
@@ -155,7 +161,9 @@ export function renderShopping(container, { days, dishes, items, unchecked, on }
   const servingsCard = card('Portionen');
   for (const dish of dishes) {
     const row = el('div', 'servings-row');
-    row.append(el('span', 'servings-name', dish.recipe.name));
+    const name = el('span', 'servings-name', dish.recipe.name);
+    if (dish.purchased) name.append(el('span', 'purchased-badge', '🛒 schon gekauft'));
+    row.append(name);
     if (dish.baseServings) {
       const stepper = el('div', 'stepper');
       const minus = el('button', 'stepper-button', '−');

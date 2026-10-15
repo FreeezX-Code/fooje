@@ -987,6 +987,26 @@ body.has-tab-bar .fab {
   text-align: left;
 }
 
+.shopping-group-title {
+  margin: 4px 0 -4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+/* Schon gekaufte Tage: gestrichelt und zurückgenommen, solange nicht ausgewählt */
+.shopping-days.is-purchased .chip[aria-pressed="false"] {
+  color: var(--color-muted);
+  border-style: dashed;
+}
+
+.purchased-badge {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
 /* Portionen: Name | − 4 Port. + */
 .servings-row {
   display: grid;
