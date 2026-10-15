@@ -3,7 +3,7 @@ import {
   onAuthChange, signIn, signOut, hasStoredSession, getCurrentSession,
   fetchRecipes, createRecipe, updateRecipe, deleteRecipe, insertRecipes,
   subscribeToChanges, unsubscribeFromChanges,
-  fetchPlanDays, savePlanDays, fetchPlannerRules, savePlannerRules,
+  fetchPlanDays, savePlanDays, fetchPlannerRules, savePlannerRules, sendToBring,
   uploadImage, deleteImage, getImageUrls,
 } from './db.js';
 import { saveRecipeCache, readRecipeCache, clearRecipeCache } from './offline.js';
@@ -68,6 +68,7 @@ const shoppingContent = document.getElementById('shopping-content');
 const shoppingMessage = document.getElementById('shopping-message');
 const shoppingBack = document.getElementById('shopping-back');
 const shoppingShare = document.getElementById('shopping-share');
+const shoppingBring = document.getElementById('shopping-bring');
 const weekNotes = document.getElementById('week-notes');
 const rulesView = document.getElementById('rules-view');
 const rulesForm = document.getElementById('rules-form');
@@ -516,7 +517,9 @@ function drawShopping() {
       },
     },
   });
-  shoppingShare.disabled = !items.some((item) => !shopping.unchecked.has(item.key));
+  const nothingToBuy = !items.some((item) => !shopping.unchecked.has(item.key));
+  shoppingShare.disabled = nothingToBuy;
+  shoppingBring.disabled = nothingToBuy;
 }
 
 // Nur die angehakten Zutaten
@@ -538,6 +541,47 @@ shoppingShare.addEventListener('click', async () => {
       console.error(error);
       shoppingMessage.textContent = 'Teilen hat nicht geklappt.';
     }
+  }
+});
+
+// An Bring! senden, danach fragen, ob die Tage als "Zutaten gekauft" markiert werden sollen
+shoppingBring.addEventListener('click', async () => {
+  const items = itemsToBuy().map((item) => ({ name: item.name, spec: item.quantity }));
+  shoppingMessage.textContent = '';
+  shoppingBring.disabled = true;
+  shoppingBring.textContent = 'Sende …';
+  let result;
+  try {
+    result = await sendToBring(items);
+  } catch (error) {
+    console.error(error);
+    shoppingMessage.textContent = error.message;
+    return;
+  } finally {
+    shoppingBring.disabled = false;
+    shoppingBring.textContent = '🛒 An Bring! senden';
+  }
+
+  const count = result.count === 1 ? '1 Zutat' : `${result.count} Zutaten`;
+  shoppingMessage.textContent = `✓ ${count} an Bring! gesendet (Liste „${result.list}“).`;
+
+  const days = [...shopping.days].filter((day) => planEntries[day]?.recipe_id && !planEntries[day].is_purchased).sort();
+  if (days.length === 0) return;
+  const label = days.length === 1 ? '1 Tag' : `${days.length} Tage`;
+  const choice = await openSheet({
+    title: 'An Bring! gesendet',
+    subtitle: `${count} stehen jetzt auf der Liste „${result.list}“. Sollen die Tage als „Zutaten gekauft“ markiert werden?`,
+    actions: [
+      { label: `🛒 Ja, ${label} als gekauft markieren`, value: 'yes' },
+      { label: 'Nein, später selbst', value: 'no' },
+    ],
+  });
+  if (choice !== 'yes') return;
+  if (await saveDays(days.map((day) => ({ day, ...dayFields(planEntries[day]), is_purchased: true })))) {
+    shoppingMessage.textContent = `✓ ${count} an Bring! gesendet, ${label} als gekauft markiert.`;
+    drawShopping();
+  } else {
+    shoppingMessage.textContent = weekMessage.textContent;
   }
 });
 

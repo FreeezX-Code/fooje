@@ -101,6 +101,29 @@ export async function savePlannerRules(rules) {
   return data.rules;
 }
 
+// ---- Bring! ----
+
+// Schickt Zutaten über die Supabase-Funktion "bring" an die Bring!-Liste.
+// items = [{ name: "Nudeln", spec: "500 g" }]. Gibt { count, list } zurück oder wirft einen Fehler mit deutscher Meldung.
+export async function sendToBring(items) {
+  const { data, error } = await supabase.functions.invoke('bring', { body: { items } });
+  if (!error) return data;
+
+  let message = 'Senden an Bring! fehlgeschlagen. Bitte Internet prüfen.';
+  const response = error.context;
+  if (response?.status === 404) {
+    message = 'Die Bring!-Funktion ist in Supabase noch nicht eingerichtet.';
+  } else if (response && typeof response.json === 'function') {
+    try {
+      const body = await response.json();
+      if (body?.error) message = body.error;
+    } catch {
+      // keine lesbare Antwort – allgemeine Meldung behalten
+    }
+  }
+  throw new Error(message);
+}
+
 // ---- Live-Abgleich (Supabase Realtime) ----
 
 let changesChannel = null;

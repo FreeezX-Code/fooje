@@ -959,6 +959,19 @@ body.has-tab-bar .fab {
   margin-top: 8px;
 }
 
+/* Unten: "An Bring! senden" über die ganze Breite, darunter Zurück | Als Text teilen */
+.shopping-actions {
+  grid-template-columns: 1fr 1fr;
+}
+
+.shopping-actions .bring-button {
+  grid-column: 1 / -1;
+}
+
+.offline .bring-button {
+  display: none;
+}
+
 .shopping-week {
   margin: -10px 0 16px;
 }
