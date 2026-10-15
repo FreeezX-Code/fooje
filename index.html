@@ -51,6 +51,17 @@
       <div id="list-view">
         <h2>Rezepte</h2>
         <a href="#/new" class="button-primary new-recipe-button">+ Neues Rezept</a>
+
+        <div id="filter-bar" class="filter-bar" hidden>
+          <form id="search-form" role="search">
+            <input id="search-input" class="search-input" type="search" placeholder="Suchen: Name oder Zutat"
+                   aria-label="Rezepte durchsuchen" enterkeyhint="search" autocomplete="off">
+          </form>
+          <div class="chip-row" id="main-component-chips" aria-label="Filter Hauptkomponente"></div>
+          <div class="chip-row" id="tag-chips" aria-label="Filter Tags"></div>
+          <button id="filter-reset" type="button" class="link-button" hidden>Filter zurücksetzen</button>
+        </div>
+
         <p id="list-message" class="muted"></p>
         <ul id="recipe-list" class="recipe-list"></ul>
 

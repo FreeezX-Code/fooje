@@ -4,8 +4,9 @@ import {
   fetchRecipes, createRecipe, updateRecipe, deleteRecipe,
   uploadImage, deleteImage, getImageUrls,
 } from './db.js';
-import { renderRecipeList, renderRecipeDetail } from './views.js';
+import { renderRecipeList, renderRecipeDetail, renderChips, MAIN_COMPONENT_LABELS } from './views.js';
 import { fillRecipeForm, readRecipeForm, readImageChoice } from './recipe-form.js';
+import { collectTags, filterRecipes, isFilterActive } from './filter.js';
 
 const loadingView = document.getElementById('loading-view');
 const loginView = document.getElementById('login-view');
@@ -22,6 +23,13 @@ const listMessage = document.getElementById('list-message');
 const recipeList = document.getElementById('recipe-list');
 const detailView = document.getElementById('detail-view');
 
+const filterBar = document.getElementById('filter-bar');
+const searchForm = document.getElementById('search-form');
+const searchInput = document.getElementById('search-input');
+const mainComponentChips = document.getElementById('main-component-chips');
+const tagChips = document.getElementById('tag-chips');
+const filterReset = document.getElementById('filter-reset');
+
 const formView = document.getElementById('form-view');
 const recipeForm = document.getElementById('recipe-form');
 const formError = document.getElementById('form-error');
@@ -32,6 +40,11 @@ let recipes = [];
 let imageUrls = {}; // { Bildpfad: Link zum Anzeigen }
 let currentUserId = null;
 let editingId = null; // id des Rezepts im Formular, null = neues Rezept
+
+// Aktuelle Suche/Filter der Liste (bleiben erhalten, wenn man in ein Rezept und zurück geht)
+const filter = { query: '', mainComponent: null, tags: new Set() };
+
+const MAIN_COMPONENT_OPTIONS = Object.entries(MAIN_COMPONENT_LABELS).map(([value, label]) => ({ value, label }));
 
 // Angemeldet → Hauptansicht, sonst → Anmeldebildschirm
 function showView(session) {
@@ -52,10 +65,60 @@ function sortRecipes() {
   recipes.sort((a, b) => a.name.localeCompare(b.name, 'de'));
 }
 
+// Zeigt die Liste – gefiltert nach Suche, Hauptkomponente und Tags
 function showList() {
-  listMessage.textContent = recipes.length === 0 ? 'Noch keine Rezepte vorhanden.' : '';
-  renderRecipeList(recipeList, recipes, imageUrls);
+  const tagOptions = collectTags(recipes);
+
+  // Gewählte Tags, die es nicht mehr gibt (z. B. Rezept gelöscht), aus dem Filter nehmen
+  for (const tag of filter.tags) {
+    if (!tagOptions.some((option) => option.value === tag)) filter.tags.delete(tag);
+  }
+
+  const selectedMain = new Set(filter.mainComponent ? [filter.mainComponent] : []);
+  renderChips(mainComponentChips, MAIN_COMPONENT_OPTIONS, selectedMain, toggleMainComponent);
+  renderChips(tagChips, tagOptions, filter.tags, toggleTag);
+  tagChips.hidden = tagOptions.length === 0;
+  filterBar.hidden = recipes.length === 0;
+  filterReset.hidden = !isFilterActive(filter);
+
+  const visible = filterRecipes(recipes, filter);
+  if (recipes.length === 0) listMessage.textContent = 'Noch keine Rezepte vorhanden.';
+  else if (visible.length === 0) listMessage.textContent = 'Keine passenden Rezepte.';
+  else listMessage.textContent = '';
+  renderRecipeList(recipeList, visible, imageUrls);
 }
+
+// Hauptkomponente: nur eine gleichzeitig, nochmal antippen hebt die Auswahl auf
+function toggleMainComponent(value) {
+  filter.mainComponent = filter.mainComponent === value ? null : value;
+  showList();
+}
+
+// Tags: mehrere gleichzeitig möglich
+function toggleTag(value) {
+  if (filter.tags.has(value)) filter.tags.delete(value);
+  else filter.tags.add(value);
+  showList();
+}
+
+searchInput.addEventListener('input', () => {
+  filter.query = searchInput.value;
+  showList();
+});
+
+// "Suchen"-Taste der Handytastatur: Tastatur schließen statt Seite neu laden
+searchForm.addEventListener('submit', (event) => {
+  event.preventDefault();
+  searchInput.blur();
+});
+
+filterReset.addEventListener('click', () => {
+  filter.query = '';
+  filter.mainComponent = null;
+  filter.tags.clear();
+  searchInput.value = '';
+  showList();
+});
 
 // Holt Anzeige-Links für die angegebenen Bilder. Klappt das nicht,
 // erscheinen eben Platzhalter – die Rezepte selbst bleiben nutzbar.

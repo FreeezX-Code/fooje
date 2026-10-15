@@ -70,6 +70,19 @@ function isWebLink(url) {
   return /^https?:\/\//i.test(url || '');
 }
 
+// Reihe von Filter-Knöpfen. options = [{ value, label }], selected = Set der gewählten Werte,
+// onToggle(value) wird beim Antippen aufgerufen.
+export function renderChips(container, options, selected, onToggle) {
+  container.replaceChildren();
+  for (const option of options) {
+    const chip = el('button', 'chip', option.label);
+    chip.type = 'button';
+    chip.setAttribute('aria-pressed', String(selected.has(option.value)));
+    chip.addEventListener('click', () => onToggle(option.value));
+    container.append(chip);
+  }
+}
+
 // imageUrls = { Bildpfad: Link } für alle Rezepte mit Bild
 export function renderRecipeList(container, recipes, imageUrls) {
   container.replaceChildren();
