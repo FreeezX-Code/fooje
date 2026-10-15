@@ -2,13 +2,15 @@
 // Strategie "erst Netz, dann Zwischenspeicher": Mit Netz kommt immer die neueste Version,
 // ohne Netz die zuletzt gespeicherte. So muss bei Änderungen nichts von Hand erneuert werden.
 
-const CACHE_NAME = 'app-shell-v1';
+const CACHE_NAME = 'app-shell-v2';
 
 const APP_FILES = [
   './',
   './index.html',
   './style.css',
   './app.js',
+  './db.js',
+  './config.js',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png',
@@ -31,10 +33,15 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Bei jeder Anfrage: nur eigene Dateien behandeln, fremde (z. B. Supabase) normal durchlassen
+// Die Supabase-Bibliothek kommt von diesem Server und wird ebenfalls zwischengespeichert
+const LIBRARY_ORIGIN = 'https://cdn.jsdelivr.net';
+
+// Bei jeder Anfrage: nur eigene Dateien und die Bibliothek behandeln,
+// alles andere (z. B. Anfragen an die Supabase-Datenbank) normal durchlassen
 self.addEventListener('fetch', (event) => {
   const request = event.request;
-  if (request.method !== 'GET' || new URL(request.url).origin !== self.location.origin) {
+  const origin = new URL(request.url).origin;
+  if (request.method !== 'GET' || (origin !== self.location.origin && origin !== LIBRARY_ORIGIN)) {
     return;
   }
 
