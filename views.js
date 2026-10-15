@@ -80,7 +80,8 @@ export function renderRecipeList(container, recipes) {
   }
 }
 
-export function renderRecipeDetail(container, recipe) {
+// onDelete wird aufgerufen, wenn auf "Löschen" getippt wird
+export function renderRecipeDetail(container, recipe, onDelete) {
   container.replaceChildren();
 
   const back = el('a', 'back-link', '‹ Alle Rezepte');
@@ -139,4 +140,13 @@ export function renderRecipeDetail(container, recipe) {
     source.append(link);
     container.append(source);
   }
+
+  const actions = el('div', 'detail-actions');
+  const edit = el('a', 'button-primary', 'Bearbeiten');
+  edit.href = '#/recipe/' + recipe.id + '/edit';
+  const remove = el('button', 'button-danger', 'Löschen');
+  remove.type = 'button';
+  remove.addEventListener('click', () => onDelete(recipe));
+  actions.append(edit, remove);
+  container.append(actions);
 }

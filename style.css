@@ -73,7 +73,10 @@ body {
 }
 
 /* Mindestens 16px Schrift, sonst zoomt das iPhone beim Antippen hinein */
-.form input {
+.form input,
+.form select,
+.form textarea {
+  width: 100%;
   min-height: 48px;
   padding: 10px 12px;
   font: inherit;
@@ -84,15 +87,122 @@ body {
   border-radius: 10px;
 }
 
-.form input:focus {
+.form textarea {
+  resize: vertical;
+}
+
+.form input:focus,
+.form select:focus,
+.form textarea:focus {
   outline: 2px solid var(--color-accent);
   outline-offset: 1px;
 }
 
-/* Schaltflächen */
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.form-group legend {
+  padding: 0;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Zutat: oben der Name in voller Breite, darunter Menge und Einheit, rechts ✕ */
+.ingredient-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 44px;
+  grid-template-areas:
+    "name   name remove"
+    "amount unit remove";
+  gap: 6px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.ingredient-name {
+  grid-area: name;
+}
+
+.ingredient-amount {
+  grid-area: amount;
+}
+
+.ingredient-unit {
+  grid-area: unit;
+}
+
+.ingredient-row .row-remove {
+  grid-area: remove;
+}
+
+/* Schrittzeile: nummeriert über einen CSS-Zähler */
+#step-rows {
+  counter-reset: step;
+}
+
+.step-row {
+  display: grid;
+  grid-template-columns: 1.6em 1fr 44px;
+  gap: 6px;
+  align-items: start;
+}
+
+.step-row::before {
+  counter-increment: step;
+  content: counter(step) ".";
+  padding-top: 12px;
+  color: var(--color-muted);
+}
+
+.row-remove {
+  min-height: 48px;
+  font: inherit;
+  color: var(--color-muted);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.form .checkbox-label {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+}
+
+.form .checkbox-label input {
+  width: 24px;
+  min-height: 0;
+  height: 24px;
+}
+
+/* Schaltflächen (auch Links, die wie Schaltflächen aussehen) */
 .button-primary,
-.button-secondary {
+.button-secondary,
+.button-danger {
+  display: block;
   width: 100%;
+  text-align: center;
+  text-decoration: none;
   min-height: 52px;
   padding: 12px 16px;
   font: inherit;
@@ -115,6 +225,23 @@ body {
   color: var(--color-accent);
   background: transparent;
   border: 1px solid var(--color-accent);
+}
+
+.button-danger {
+  color: var(--color-error);
+  background: transparent;
+  border: 1px solid var(--color-error);
+}
+
+.new-recipe-button {
+  margin-bottom: 16px;
+}
+
+.detail-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 32px;
 }
 
 /* Rezeptliste */

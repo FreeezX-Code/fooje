@@ -26,3 +26,22 @@ export async function fetchRecipes() {
   if (error) throw error;
   return data;
 }
+
+// Neues Rezept speichern, gibt das gespeicherte Rezept (mit id) zurück
+export async function createRecipe(recipe) {
+  const { data, error } = await supabase.from('recipes').insert(recipe).select().single();
+  if (error) throw error;
+  return data;
+}
+
+// Vorhandenes Rezept ändern, gibt das geänderte Rezept zurück
+export async function updateRecipe(id, recipe) {
+  const { data, error } = await supabase.from('recipes').update(recipe).eq('id', id).select().single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteRecipe(id) {
+  const { error } = await supabase.from('recipes').delete().eq('id', id);
+  if (error) throw error;
+}

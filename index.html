@@ -50,6 +50,7 @@
     <section id="main-view" hidden>
       <div id="list-view">
         <h2>Rezepte</h2>
+        <a href="#/new" class="button-primary new-recipe-button">+ Neues Rezept</a>
         <p id="list-message" class="muted"></p>
         <ul id="recipe-list" class="recipe-list"></ul>
 
@@ -60,6 +61,69 @@
       </div>
 
       <article id="detail-view" class="recipe-detail" hidden></article>
+
+      <div id="form-view" hidden>
+        <h2 id="form-title">Neues Rezept</h2>
+        <form id="recipe-form" class="form">
+          <label>
+            Name
+            <input name="name" type="text" required autocomplete="off">
+          </label>
+          <label>
+            Hauptkomponente
+            <select name="main_component" required>
+              <option value="" disabled selected>Bitte wählen</option>
+            </select>
+          </label>
+          <label>
+            Beilage
+            <select name="side_dish"></select>
+          </label>
+          <div class="form-row">
+            <label>
+              Portionen
+              <input name="servings" type="number" min="1" step="1" inputmode="numeric">
+            </label>
+            <label>
+              Zeit (Min.)
+              <input name="prep_time_minutes" type="number" min="0" step="1" inputmode="numeric">
+            </label>
+          </div>
+
+          <fieldset class="form-group">
+            <legend>Zutaten</legend>
+            <div id="ingredient-rows" class="rows"></div>
+            <button id="add-ingredient" type="button" class="button-secondary">+ Zutat</button>
+          </fieldset>
+
+          <fieldset class="form-group">
+            <legend>Zubereitung</legend>
+            <div id="step-rows" class="rows"></div>
+            <button id="add-step" type="button" class="button-secondary">+ Schritt</button>
+          </fieldset>
+
+          <label>
+            Tags
+            <input name="tags" type="text" placeholder="z. B. schnell, Sommer" autocomplete="off">
+          </label>
+          <label>
+            Quelle (Link)
+            <input name="source_url" type="url" placeholder="https://…" inputmode="url" autocomplete="off">
+          </label>
+          <label>
+            Zuletzt gekocht
+            <input name="last_cooked_on" type="date">
+          </label>
+          <label class="checkbox-label">
+            <input name="is_favorite" type="checkbox">
+            Favorit
+          </label>
+
+          <p id="form-error" class="error" role="alert"></p>
+          <button id="save-button" type="submit" class="button-primary">Speichern</button>
+          <button id="cancel-button" type="button" class="button-secondary">Abbrechen</button>
+        </form>
+      </div>
     </section>
   </main>
 </body>
