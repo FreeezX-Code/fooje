@@ -55,14 +55,20 @@ Das Modell so anlegen, dass später Felder und Tabellen für die Wochenplanung e
    - Liste mit Suche und Filter nach Hauptkomponente und Tags
    - Änderungen erscheinen auf beiden Handys
    - Backup: alle Rezepte als JSON-Datei exportieren und wieder importieren
-2. **Wochenplan und Kalender** ← AKTUELL
-   - Ein Gericht pro Tag, Wochenansicht Mo–So, Navigation über eine Leiste „Rezepte | Wochenplan“
+2. **Wochenplan und Kalender** ✓ abgeschlossen
+   - Ein Gericht pro Tag, Wochenansicht Mo–So, Navigation über eine Leiste „Wochenplan | Rezepte“. Der Fokus liegt auf dem Wochenplan: Die App startet dort, vergangene Tage sind ausgeblendet (einblendbar), Tippen auf einen Tag öffnet das Tagesmenü
    - Generator mit Regeln für Ausgewogenheit, die Regeln sind in der App einstellbar: je Hauptkomponente mindestens/höchstens pro Woche, nicht zweimal hintereinander dieselbe Hauptkomponente bzw. Beilage, Rezepte der letzten X Wochen meiden, Favoriten bevorzugen. Reichen die Rezepte nicht, trotzdem planen und sagen, welche Regel nicht eingehalten wurde
    - Pro Tag: neu würfeln, Gericht festhalten (bleibt beim Neu-Würfeln stehen), Tag frei (nichts planen), Rezept selbst auswählen, mit anderem Tag tauschen/verschieben. Der Plan muss sich jederzeit spontan anpassen lassen (z. B. Mittwoch doch Pizza)
    - „Zutaten gekauft“: pro Tag an/aus und ein Knopf „Alles als gekauft markieren“ für die Woche (ab Stufe 3 evtl. automatisch beim Senden an Bring!). Gekaufte Gerichte tauscht der Generator nie aus. Muss ein gekauftes Gericht seinem Tag weichen (anderes Rezept, Tag frei, neu würfeln), kommt eine Rückfrage: auf den nächsten freien Tag verschieben (kein Gericht, nicht „frei“; notfalls in der Folgewoche) oder nicht mehr einplanen
    - Wochenplan erscheint live auf beiden Handys und ist offline lesbar
    - Später (verschoben): automatische Planung am gewählten Wochentag mit Benachrichtigung
-3. Bring!-Anbindung: Zutaten der Woche zusammenfassen und über eine Supabase-Funktion an Bring! übergeben (inoffizielle API), Fallback „als Text teilen“
+3. **Bring!-Anbindung** ← AKTUELL
+   - Einkaufsliste aus dem Wochenplan: Tage auswählen (Vorgabe: ab heute bis Sonntag, noch nicht gekauft, nicht frei), gleiche Zutaten zusammenfassen und Mengen addieren
+   - Portionen: Rezepte behalten ihre Standardportionen; in der Einkaufsliste pro Gericht anpassbar, die Mengen werden umgerechnet
+   - Vorschau zum Abhaken: was schon im Haus ist, wird abgewählt, bevor gesendet wird
+   - Senden an Bring! über eine Supabase-Funktion (inoffizielle API). Zugangsdaten nur als Geheimnis in Supabase. Empfohlen: eigenes Bring!-Konto (E-Mail + Passwort) nur für die App, Mitglied der gemeinsamen Liste – unser Haupt-Login läuft über Google/Apple
+   - Nach dem Senden Rückfrage, ob die Tage als „Zutaten gekauft“ markiert werden sollen
+   - Fallback „Als Text teilen“ (funktioniert auch ohne Bring!)
 4. Import aus Web und TikTok: Android über das Teilen-Menü (Web Share Target), iPhone über Link einfügen oder Kurzbefehl; Webrezepte über Schema.org-Daten auslesen, TikTok über Beschreibung und KI; Import als Entwurf
 
 Nur an der aktuellen Stufe arbeiten. Spätere Stufen nicht vorwegnehmen.
