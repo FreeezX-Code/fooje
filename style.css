@@ -260,6 +260,24 @@ body {
   margin-top: 32px;
 }
 
+/* Offline-Hinweis; offline werden Neu, Bearbeiten und Löschen ausgeblendet */
+.offline-banner {
+  padding: 12px;
+  margin-bottom: 16px;
+  background: #fff4dc;
+  border: 1px solid #e8c77a;
+  border-radius: 12px;
+}
+
+.offline-banner p {
+  margin: 0 0 10px;
+}
+
+.offline .new-recipe-button,
+.offline .detail-actions {
+  display: none;
+}
+
 /* Suche und Filter */
 .filter-bar {
   display: flex;

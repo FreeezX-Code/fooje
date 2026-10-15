@@ -43,6 +43,8 @@ function recipeImage(recipe, imageUrl, className) {
     img.src = imageUrl;
     img.alt = recipe.name;
     img.loading = 'lazy';
+    // Damit der Service Worker erkennen kann, ob das Bild erfolgreich geladen wurde
+    img.crossOrigin = 'anonymous';
     return img;
   }
   return el('div', 'recipe-placeholder ' + className, MAIN_COMPONENT_ICONS[recipe.main_component] || '🍽️');

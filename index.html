@@ -48,6 +48,14 @@
     </section>
 
     <section id="main-view" hidden>
+      <div id="offline-banner" class="offline-banner" role="status" hidden>
+        <p>
+          <strong>Keine Verbindung.</strong> Ihr seht den zuletzt geladenen Stand vom <span id="offline-date"></span>.
+          Ändern geht erst wieder mit Verbindung.
+        </p>
+        <button id="retry-button" type="button" class="button-secondary">Erneut versuchen</button>
+      </div>
+
       <div id="list-view">
         <h2>Rezepte</h2>
         <a href="#/new" class="button-primary new-recipe-button">+ Neues Rezept</a>

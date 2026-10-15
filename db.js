@@ -2,13 +2,31 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/+esm';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
 
-// Die Anmeldung wird im Browser gespeichert, man bleibt also angemeldet.
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Die Anmeldung wird im Browser unter diesem Namen gespeichert, man bleibt also angemeldet.
+// (Das ist der Standardname von Supabase, hier nur ausdrücklich festgelegt.)
+const SESSION_STORAGE_KEY = 'sb-' + new URL(SUPABASE_URL).hostname.split('.')[0] + '-auth-token';
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: { storageKey: SESSION_STORAGE_KEY },
+});
 
 // Ruft callback(session) beim Start und bei jeder An-/Abmeldung auf.
-// session ist null, wenn niemand angemeldet ist.
+// session ist null, wenn niemand angemeldet ist – oder wenn die Anmeldung
+// gerade nicht erneuert werden konnte, weil keine Verbindung besteht.
 export function onAuthChange(callback) {
   supabase.auth.onAuthStateChange((_event, session) => callback(session));
+}
+
+// Ist noch eine Anmeldung gespeichert? Supabase löscht sie beim Abmelden
+// oder wenn sie ungültig ist – aber nicht, wenn nur die Verbindung fehlt.
+export function hasStoredSession() {
+  return localStorage.getItem(SESSION_STORAGE_KEY) !== null;
+}
+
+// Aktuelle Anmeldung holen (erneuert sie bei Bedarf, dafür braucht es Verbindung)
+export async function getCurrentSession() {
+  const { data } = await supabase.auth.getSession();
+  return data.session;
 }
 
 export async function signIn(email, password) {

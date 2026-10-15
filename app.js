@@ -1,9 +1,10 @@
 // Einstiegspunkt der App: entscheidet, welche Ansicht gezeigt wird.
 import {
-  onAuthChange, signIn, signOut,
+  onAuthChange, signIn, signOut, hasStoredSession, getCurrentSession,
   fetchRecipes, createRecipe, updateRecipe, deleteRecipe,
   uploadImage, deleteImage, getImageUrls,
 } from './db.js';
+import { saveRecipeCache, readRecipeCache, clearRecipeCache } from './offline.js';
 import { renderRecipeList, renderRecipeDetail, renderChips, MAIN_COMPONENT_LABELS } from './views.js';
 import { fillRecipeForm, readRecipeForm, readImageChoice } from './recipe-form.js';
 import { collectTags, filterRecipes, isFilterActive } from './filter.js';
@@ -17,6 +18,10 @@ const loginButton = document.getElementById('login-button');
 const loginError = document.getElementById('login-error');
 const userEmail = document.getElementById('user-email');
 const logoutButton = document.getElementById('logout-button');
+
+const offlineBanner = document.getElementById('offline-banner');
+const offlineDate = document.getElementById('offline-date');
+const retryButton = document.getElementById('retry-button');
 
 const listView = document.getElementById('list-view');
 const listMessage = document.getElementById('list-message');
@@ -40,25 +45,78 @@ let recipes = [];
 let imageUrls = {}; // { Bildpfad: Link zum Anzeigen }
 let currentUserId = null;
 let editingId = null; // id des Rezepts im Formular, null = neues Rezept
+let isOffline = false; // true = keine Verbindung, es wird der gespeicherte Stand gezeigt
 
 // Aktuelle Suche/Filter der Liste (bleiben erhalten, wenn man in ein Rezept und zurück geht)
 const filter = { query: '', mainComponent: null, tags: new Set() };
 
 const MAIN_COMPONENT_OPTIONS = Object.entries(MAIN_COMPONENT_LABELS).map(([value, label]) => ({ value, label }));
 
-// Angemeldet → Hauptansicht, sonst → Anmeldebildschirm
-function showView(session) {
+function showMain(email) {
   loadingView.hidden = true;
-  loginView.hidden = Boolean(session);
-  mainView.hidden = !session;
-  userEmail.textContent = session ? session.user.email : '';
+  loginView.hidden = true;
+  mainView.hidden = false;
+  userEmail.textContent = email;
+}
 
-  // Rezepte nur neu laden, wenn sich jemand (anderes) angemeldet hat.
-  // setTimeout: Supabase empfiehlt, im Anmelde-Ereignis nicht direkt weitere Anfragen zu starten.
-  const userId = session ? session.user.id : null;
-  if (userId && userId !== currentUserId) setTimeout(loadRecipes, 0);
-  if (!userId) recipes = [];
-  currentUserId = userId;
+// Wird beim Start und bei jeder Änderung der Anmeldung aufgerufen
+function showView(session) {
+  // 1. Angemeldet: Rezepte laden, wenn sich jemand (anderes) angemeldet hat
+  //    oder wir gerade offline waren und die Anmeldung jetzt wieder klappt.
+  //    setTimeout: Supabase empfiehlt, im Anmelde-Ereignis nicht direkt weitere Anfragen zu starten.
+  if (session) {
+    showMain(session.user.email);
+    if (session.user.id !== currentUserId || isOffline) {
+      currentUserId = session.user.id;
+      setTimeout(loadRecipes, 0);
+    }
+    return;
+  }
+
+  // 2. Anmeldung noch gespeichert, konnte aber nicht erneuert werden (keine Verbindung):
+  //    nicht abmelden, sondern den zuletzt geladenen Stand zeigen.
+  const cache = readRecipeCache();
+  if (hasStoredSession() && cache) {
+    showMain(cache.email);
+    currentUserId = cache.userId;
+    useCache(cache);
+    return;
+  }
+
+  // 3. Abgemeldet: Anmeldebildschirm, alles Gemerkte vom Handy löschen
+  currentUserId = null;
+  recipes = [];
+  imageUrls = {};
+  clearRecipeCache();
+  setOffline(false);
+  loadingView.hidden = true;
+  loginView.hidden = false;
+  mainView.hidden = true;
+}
+
+// Offline-Hinweis ein-/ausblenden. Offline sind Neu, Bearbeiten und Löschen ausgeblendet (siehe style.css).
+function setOffline(offline, savedAt = null) {
+  isOffline = offline;
+  document.body.classList.toggle('offline', offline);
+  offlineBanner.hidden = !offline;
+  offlineDate.textContent = savedAt
+    ? new Date(savedAt).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })
+    : '';
+}
+
+// Zeigt den auf dem Handy gespeicherten Stand an
+function useCache(cache) {
+  recipes = cache.recipes;
+  imageUrls = cache.imageUrls ?? {};
+  sortRecipes();
+  setOffline(true, cache.savedAt);
+  showList();
+  showRoute();
+}
+
+// Aktuellen Stand auf dem Handy merken (nach Laden, Speichern, Löschen)
+function rememberRecipes() {
+  saveRecipeCache({ userId: currentUserId, email: userEmail.textContent, recipes, imageUrls });
 }
 
 function sortRecipes() {
@@ -130,20 +188,54 @@ async function loadImageUrls(paths) {
   }
 }
 
+// Lädt die Rezepte vom Server. Klappt das nicht, wird der gespeicherte Stand gezeigt.
 async function loadRecipes() {
-  listMessage.textContent = 'Rezepte werden geladen …';
+  if (!isOffline) listMessage.textContent = 'Rezepte werden geladen …';
   try {
-    recipes = await fetchRecipes();
+    const loaded = await fetchRecipes();
+    recipes = loaded;
     sortRecipes();
     imageUrls = {};
     await loadImageUrls(recipes.map((r) => r.image_path).filter(Boolean));
+    setOffline(false);
+    rememberRecipes();
     showList();
+    showRoute();
   } catch (error) {
     console.error(error);
-    listMessage.textContent = 'Rezepte konnten nicht geladen werden. Bitte Internet prüfen.';
+    const cache = readRecipeCache();
+    if (cache && cache.userId === currentUserId) {
+      useCache(cache);
+    } else {
+      listMessage.textContent = 'Rezepte konnten nicht geladen werden. Bitte Internet prüfen.';
+      showRoute();
+    }
   }
-  showRoute();
 }
+
+// "Erneut versuchen" und automatisch, sobald das Handy wieder Netz meldet
+async function retryConnection() {
+  if (!isOffline) return;
+  retryButton.disabled = true;
+  retryButton.textContent = 'Verbinde …';
+  try {
+    // Erst die Anmeldung erneuern – ohne gültige Anmeldung würde der Server
+    // (wegen der Zugriffsregeln) einfach eine leere Liste liefern.
+    const session = await getCurrentSession();
+    if (session) {
+      currentUserId = session.user.id;
+      await loadRecipes();
+    }
+  } catch (error) {
+    console.error(error);
+  } finally {
+    retryButton.disabled = false;
+    retryButton.textContent = 'Erneut versuchen';
+  }
+}
+
+retryButton.addEventListener('click', retryConnection);
+window.addEventListener('online', retryConnection);
 
 // Die Adresse bestimmt die Ansicht:
 //   #/new              → Formular für neues Rezept
@@ -158,7 +250,10 @@ function showRoute() {
   const findRecipe = (match) => (match ? recipes.find((r) => r.id === match[1]) : null);
 
   let view = listView;
-  if (hash === '#/new') {
+  if (isOffline && (hash === '#/new' || editMatch)) {
+    // Offline kann nichts gespeichert werden, also auch kein Formular öffnen
+    view = listView;
+  } else if (hash === '#/new') {
     editingId = null;
     fillRecipeForm(null);
     view = formView;
@@ -220,6 +315,7 @@ recipeForm.addEventListener('submit', async (event) => {
 
     recipes = recipes.filter((r) => r.id !== saved.id).concat(saved);
     sortRecipes();
+    rememberRecipes();
     showList();
     // replace: Das Formular verschwindet aus dem Verlauf, "Zurück" führt dann zur Liste
     location.replace('#/recipe/' + saved.id);
@@ -242,6 +338,7 @@ async function handleDelete(recipe) {
     await deleteRecipe(recipe.id);
     if (recipe.image_path) deleteImage(recipe.image_path);
     recipes = recipes.filter((r) => r.id !== recipe.id);
+    rememberRecipes();
     showList();
     location.replace('#');
   } catch (error) {
