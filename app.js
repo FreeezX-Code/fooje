@@ -84,6 +84,7 @@ let isOffline = false; // true = keine Verbindung, es wird der gespeicherte Stan
 let animateList = false; // true = Karten beim nächsten Anzeigen einschweben lassen
 let planEntries = {}; // geladene Tage des Wochenplans: { "2026-10-19": Eintrag, … }
 let weekMonday = startOfWeek(new Date()); // Montag der angezeigten Woche
+let showPastDays = false; // vergangene Tage der Woche eingeblendet?
 let plannerRules = null; // Regeln für den Generator (geladen beim Öffnen der Regel-Seite)
 let rulesEdited = false; // true, sobald auf der Regel-Seite etwas geändert wurde
 let currentView = null; // gerade sichtbare Ansicht (für die Einblend-Animation)
@@ -290,7 +291,15 @@ function showWeek(monday) {
 
 // Zeichnet die angezeigte Woche neu. highlight = Tage, die kurz aufleuchten sollen.
 function drawWeek(highlight = new Set()) {
-  renderWeek(weekDays, weekMonday, planEntries, recipes, imageUrls, { highlight, onEdit: editDay });
+  renderWeek(weekDays, weekMonday, planEntries, recipes, imageUrls, {
+    highlight,
+    onEdit: editDay,
+    showPast: showPastDays,
+    onTogglePast: () => {
+      showPastDays = !showPastDays;
+      drawWeek();
+    },
+  });
   updatePlanButtons();
 }
 

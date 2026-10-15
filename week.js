@@ -83,13 +83,34 @@ function thumbnail(recipe, imageUrl) {
 // entries = { "2026-10-19": Eintrag aus meal_plan_days, … }, recipes = alle Rezepte
 // highlight = Set von Tagen, die gerade geändert wurden (leuchten kurz auf)
 // onEdit(tag) = wird beim Antippen eines Tages oder von "⋯" aufgerufen
-export function renderWeek(container, monday, entries, recipes, imageUrls, { highlight = new Set(), onEdit = () => {} } = {}) {
+// showPast = vergangene Tage anzeigen; onTogglePast = Knopf "anzeigen/ausblenden" wurde angetippt
+export function renderWeek(container, monday, entries, recipes, imageUrls, {
+  highlight = new Set(), onEdit = () => {}, showPast = false, onTogglePast = () => {},
+} = {}) {
   container.replaceChildren();
   const today = toIsoDate(new Date());
 
+  // Vergangene Tage ausblenden – außer die ganze Woche ist vorbei (dann schaut man absichtlich zurück)
+  const pastCount = Array.from({ length: 7 }, (_, i) => toIsoDate(addDays(monday, i))).filter((iso) => iso < today).length;
+  const canHidePast = pastCount > 0 && pastCount < 7;
+  const hidePast = canHidePast && !showPast;
+
+  if (canHidePast) {
+    const toggle = el('button', 'past-toggle', hidePast
+      ? `▾ ${pastCount === 1 ? 'Vergangenen Tag' : `${pastCount} vergangene Tage`} anzeigen`
+      : '▴ Vergangene Tage ausblenden');
+    toggle.type = 'button';
+    toggle.addEventListener('click', onTogglePast);
+    const item = el('li', 'past-toggle-item');
+    item.append(toggle);
+    container.append(item);
+  }
+
+  let shown = 0;
   for (let i = 0; i < 7; i++) {
     const date = addDays(monday, i);
     const iso = toIsoDate(date);
+    if (hidePast && iso < today) continue;
     const entry = entries[iso];
     const recipe = entry?.recipe_id && !entry.is_day_off ? recipes.find((r) => r.id === entry.recipe_id) : null;
 
@@ -131,7 +152,7 @@ export function renderWeek(container, monday, entries, recipes, imageUrls, { hig
 
     card.append(dateBox, content, menu);
     const item = el('li');
-    item.style.setProperty('--i', i);
+    item.style.setProperty('--i', shown++);
     if (highlight.has(iso)) item.classList.add('just-planned');
     item.append(card);
     container.append(item);

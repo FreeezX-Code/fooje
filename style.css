@@ -781,6 +781,26 @@ body.has-tab-bar .fab {
 }
 
 /* Tag: Datum | Inhalt (Rezept bzw. "leer") | ⋯ */
+/* "▾ 3 vergangene Tage anzeigen" */
+.past-toggle {
+  display: block;
+  width: 100%;
+  min-height: 40px;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  background: none;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.past-toggle:active {
+  background: var(--color-soft);
+}
+
 .day-card {
   display: grid;
   grid-template-columns: 52px 1fr 40px;
