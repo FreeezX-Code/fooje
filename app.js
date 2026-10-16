@@ -104,6 +104,7 @@ let imageUrlsLoadedAt = 0; // Zeitpunkt, ab dem die Links gelten (sie laufen nac
 let currentUserId = null;
 let editingId = null; // id des Rezepts im Formular, null = neues Rezept
 let pendingDraft = null; // importierter Entwurf, der beim nächsten Öffnen von "Neues Rezept" eingesetzt wird
+let pendingShare = null; // per "Teilen" (Android) geschickter Link/Text, wird beim Öffnen von #/import eingesetzt
 let isOffline = false; // true = keine Verbindung, es wird der gespeicherte Stand gezeigt
 let animateList = false; // true = Karten beim nächsten Anzeigen einschweben lassen
 let planEntries = {}; // geladene Tage des Wochenplans: { "2026-10-19": Eintrag, … }
@@ -1132,6 +1133,19 @@ function openImport() {
   importError.textContent = '';
   importStatus.hidden = true;
   showImportText(false);
+
+  // Per "Teilen" geschickt: Link einsetzen und gleich importieren (bzw. Text einsetzen)
+  const shared = pendingShare;
+  pendingShare = null;
+  if (!shared) return;
+  const url = extractUrl(shared);
+  if (url) {
+    importForm.elements.namedItem('url').value = url;
+    importForm.requestSubmit();
+  } else {
+    showImportText(true);
+    importForm.elements.namedItem('text').value = shared;
+  }
 }
 
 // Zweiter Weg: Rezepttext einfügen statt die Seite laden zu lassen
@@ -1340,6 +1354,17 @@ loginForm.addEventListener('submit', async (event) => {
 });
 
 logoutButton.addEventListener('click', () => signOut());
+
+// Android "Teilen" (share_target im Manifest) öffnet die App als ./?shared_text=…
+// Geteiltes merken, Adresse aufräumen und zur Import-Seite wechseln.
+{
+  const params = new URLSearchParams(location.search);
+  const shared = ['shared_url', 'shared_text', 'shared_title'].map((key) => params.get(key)?.trim()).filter(Boolean);
+  if (shared.length > 0) {
+    pendingShare = shared.find((value) => extractUrl(value)) ?? shared.join('\n');
+    history.replaceState(null, '', location.pathname + '#/import');
+  }
+}
 
 window.addEventListener('hashchange', showRoute);
 

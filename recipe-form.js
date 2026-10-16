@@ -12,6 +12,7 @@ const imagePreview = document.getElementById('image-preview');
 const imageInput = document.getElementById('image-input');
 const imagePickText = document.getElementById('image-pick-text');
 const imageRemove = document.getElementById('image-remove');
+const imagePaste = document.getElementById('image-paste');
 const imageError = document.getElementById('image-error');
 
 const field = (name) => form.elements.namedItem(name);
@@ -79,6 +80,32 @@ imageInput.addEventListener('change', () => {
   });
 });
 
+// Foto aus der Zwischenablage (z. B. Screenshot oder in einer anderen App kopiertes Bild).
+// Das Handy fragt beim ersten Mal ggf. nach Erlaubnis bzw. zeigt einen "Einfügen"-Knopf.
+imagePaste.addEventListener('click', async () => {
+  imageError.textContent = '';
+  try {
+    for (const item of await navigator.clipboard.read()) {
+      const type = item.types.find((t) => t.startsWith('image/'));
+      if (type) {
+        useImportedImage(await item.getType(type));
+        return;
+      }
+    }
+    imageError.textContent = 'In der Zwischenablage ist kein Foto. Bild vorher kopieren (lange antippen → Kopieren).';
+  } catch {
+    imageError.textContent = 'Kein Zugriff auf die Zwischenablage. Bitte das Foto speichern und über „Foto hinzufügen“ wählen.';
+  }
+});
+
+// Am Computer: Strg+V irgendwo im Formular fügt ein kopiertes Bild ein
+imagePaste.form.addEventListener('paste', (event) => {
+  const file = [...(event.clipboardData?.files ?? [])].find((f) => f.type.startsWith('image/'));
+  if (!file) return; // normaler Text: ganz normal einfügen lassen
+  event.preventDefault();
+  useImportedImage(file);
+});
+
 imageRemove.addEventListener('click', () => {
   newImage = null;
   removeImage = true;
@@ -86,7 +113,7 @@ imageRemove.addEventListener('click', () => {
   showPreview(null);
 });
 
-// Bild aus einem Import übernehmen (wird wie ein selbst gewähltes Foto verkleinert und angezeigt)
+// Bild aus einem Import oder der Zwischenablage übernehmen (wird wie ein selbst gewähltes Foto verkleinert und angezeigt)
 export function useImportedImage(blob) {
   pendingImage = prepareImage(blob).finally(() => {
     pendingImage = null;
