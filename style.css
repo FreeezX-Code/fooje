@@ -20,6 +20,10 @@
   --color-error: #b3261e;
   --color-favorite: #f2b632;
   --color-banner: #fff3d6;
+  --color-accent: #5046e5;       /* Blau-Violett aus dem Logo, sparsam einsetzen */
+  --color-on-accent: #ffffff;
+  --color-accent-soft: #ecebfd;  /* zarte Akzentfläche, z. B. Hinweise "Gekauft" */
+  --color-on-accent-soft: #3c3489;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 6px 20px rgba(0, 0, 0, 0.07);
   --shadow-strong: 0 8px 24px rgba(0, 0, 0, 0.25);
 
@@ -50,6 +54,10 @@
     --color-soft: #33363b;
     --color-error: #ff8a80;
     --color-banner: #3d3522;
+    --color-accent: #8f88ff;
+    --color-on-accent: #16151f;
+    --color-accent-soft: #2e2b55;
+    --color-on-accent-soft: #d6d3ff;
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 20px rgba(0, 0, 0, 0.3);
     --shadow-strong: 0 8px 24px rgba(0, 0, 0, 0.6);
   }
@@ -217,11 +225,11 @@ h3 {
 }
 
 .tab[aria-current="page"] {
-  color: var(--color-text);
+  color: var(--color-accent);
 }
 
 .tab[aria-current="page"] .tab-icon {
-  background: var(--color-soft);
+  background: var(--color-accent-soft);
 }
 
 .tab:active .tab-icon {
@@ -708,14 +716,28 @@ body.has-tab-bar .fab {
 
 .plan-actions {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
   margin-top: 16px;
 }
 
+.plan-actions .button-primary,
+.plan-actions .button-secondary {
+  flex: 1 1 40%;
+  width: auto;
+}
+
+.plan-actions .button-primary {
+  color: var(--color-on-accent);
+  background: var(--color-accent);
+}
+
 .plan-actions .link-button {
+  order: 1;
+  flex: 1 1 100%;
   align-self: center;
+  min-height: 40px;
 }
 
 /* Ergebnis des Generators: Erfolg oder Hinweise, welche Regeln nicht eingehalten werden konnten */
@@ -748,8 +770,8 @@ body.has-tab-bar .fab {
 
 /* Neu geplante Tage leuchten nacheinander kurz auf */
 @keyframes planned-pop {
-  0% { transform: scale(0.96); box-shadow: 0 0 0 0 var(--color-primary); }
-  40% { transform: scale(1.02); box-shadow: 0 0 0 3px var(--color-primary); }
+  0% { transform: scale(0.96); box-shadow: 0 0 0 0 var(--color-accent); }
+  40% { transform: scale(1.02); box-shadow: 0 0 0 3px var(--color-accent); }
   100% { transform: none; box-shadow: var(--shadow); }
 }
 
@@ -758,14 +780,27 @@ body.has-tab-bar .fab {
   animation-delay: calc(var(--i) * 90ms);
 }
 
+/* Zeitleiste: senkrechte Linie links, pro Tag ein Punkt */
 .week-days {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
   margin: 12px 0 0;
-  padding: 0;
+  padding: 0 0 0 26px;
   list-style: none;
   transition: opacity 0.2s;
+}
+
+.week-days::before {
+  content: "";
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 8px;
+  width: 2px;
+  background: var(--color-border);
+  border-radius: 1px;
 }
 
 .week-days.is-loading {
@@ -799,32 +834,120 @@ body.has-tab-bar .fab {
   background: var(--color-soft);
 }
 
+.day-item {
+  position: relative;
+}
+
+.day-dot {
+  position: absolute;
+  top: 6px;
+  left: -22px;
+  width: 10px;
+  height: 10px;
+  background: var(--color-muted);
+  border: 2px solid var(--color-background);
+  border-radius: 50%;
+  box-sizing: content-box;
+}
+
+.day-item.is-open .day-dot {
+  background: var(--color-background);
+  border-color: var(--color-muted);
+  width: 8px;
+  height: 8px;
+  top: 7px;
+  left: -21px;
+}
+
+.day-item.is-today .day-dot {
+  background: var(--color-accent);
+  border-color: var(--color-background);
+  box-shadow: 0 0 0 4px var(--color-accent-soft);
+}
+
+.day-label {
+  margin-bottom: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+.day-item.is-today .day-label {
+  color: var(--color-accent);
+}
+
+/* Auf die Teile, nicht auf den Eintrag: dessen Einblend-Animation setzt opacity selbst */
+.day-item.is-past > * {
+  opacity: 0.55;
+}
+
+/* Karte: Inhalt (Bild + Text) | ⋯ */
 .day-card {
-  display: grid;
-  grid-template-columns: 52px 1fr 40px;
-  gap: 10px;
+  display: flex;
   align-items: center;
-  min-height: 76px;
-  padding: 10px 6px 10px 12px;
+  gap: 4px;
+  padding: 8px 4px 8px 8px;
   background: var(--color-surface);
   border: 2px solid transparent;
-  border-radius: var(--radius);
+  border-radius: var(--radius-small);
   box-shadow: var(--shadow);
 }
 
-/* Inhalt ist ein Link (Rezept) oder Knopf (leerer/freier Tag) – ohne eigenes Aussehen */
+.day-card.is-today {
+  border-color: var(--color-accent);
+}
+
+/* Leerer oder freier Tag: gestrichelt, ohne Schatten */
+.day-card.is-empty {
+  background: none;
+  border: 1.5px dashed var(--color-border);
+  box-shadow: none;
+}
+
+.day-card.is-today.is-empty {
+  border-color: var(--color-accent);
+}
+
+/* Heute mit Rezept: großes Bild oben, Text darunter, ⋯ oben rechts auf dem Bild */
+.day-card.has-hero {
+  position: relative;
+  padding: 0;
+  overflow: hidden;
+}
+
+.day-card.has-hero .day-content {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+}
+
+.day-card.has-hero .day-text {
+  padding: 10px 14px 12px;
+}
+
+.day-card.has-hero .day-recipe-name {
+  font-size: 1.1rem;
+}
+
+.day-card.has-hero .day-menu {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  color: #fff;
+  background: rgba(20, 20, 26, 0.45);
+}
+
 .day-content {
   display: flex;
+  flex: 1;
   gap: 12px;
   align-items: center;
-  width: 100%;
   min-width: 0;
-  min-height: 56px;
+  min-height: 52px;
   padding: 0;
   font: inherit;
   color: inherit;
   text-align: left;
-  text-decoration: none;
   background: none;
   border: none;
   cursor: pointer;
@@ -832,16 +955,24 @@ body.has-tab-bar .fab {
 }
 
 .day-content:active {
-  transform: scale(0.97);
+  transform: scale(0.98);
+}
+
+.day-content.is-empty {
+  gap: 8px;
+  padding-left: 6px;
+  color: var(--color-muted);
 }
 
 .day-add {
   margin-left: auto;
   font-size: 1.4rem;
   line-height: 1;
+  color: var(--color-accent);
 }
 
 .day-menu {
+  flex-shrink: 0;
   width: 40px;
   height: 40px;
   font: inherit;
@@ -869,65 +1000,24 @@ body.has-tab-bar .fab {
   pointer-events: none;
 }
 
-.day-card.is-today {
-  border-color: var(--color-primary);
-}
-
-.day-card.is-past {
-  opacity: 0.6;
-}
-
-.day-date {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  line-height: 1.1;
-}
-
-.day-weekday {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--color-muted);
-  text-transform: uppercase;
-}
-
-.day-number {
-  font-size: 1.5rem;
-  font-weight: 800;
-}
-
-.day-today {
-  margin-top: 3px;
-  padding: 1px 6px;
-  font-size: 0.65rem;
-  font-weight: 700;
-  color: var(--color-on-primary);
-  background: var(--color-primary);
-  border-radius: 999px;
-}
-
-.day-content {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  min-width: 0;
-}
-
-.day-content.is-empty {
-  gap: 8px;
-  color: var(--color-muted);
-}
-
 .day-thumb {
   display: flex;
   flex-shrink: 0;
-  width: 56px;
-  height: 56px;
+  width: 48px;
+  height: 48px;
   padding: 0;
   align-items: center;
   justify-content: center;
-  font-size: 1.6rem;
-  border-radius: var(--radius-small);
+  font-size: 1.4rem;
+  border-radius: 10px;
+}
+
+.day-thumb.day-hero {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 7;
+  font-size: 2.6rem;
+  border-radius: 0;
 }
 
 .day-text {
@@ -941,14 +1031,30 @@ body.has-tab-bar .fab {
   overflow-wrap: anywhere;
 }
 
-.day-badges {
-  margin-right: 4px;
-  font-size: 0.85rem;
-}
-
 .day-recipe-meta {
   font-size: 0.85rem;
   color: var(--color-muted);
+}
+
+.day-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.day-badge {
+  padding: 1px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  background: var(--color-soft);
+  border-radius: 999px;
+}
+
+.day-badge.is-purchased {
+  color: var(--color-on-accent-soft);
+  background: var(--color-accent-soft);
 }
 
 /* ---------- Import ---------- */

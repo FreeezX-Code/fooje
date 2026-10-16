@@ -3,6 +3,7 @@
 import { MAIN_COMPONENT_LABELS, MAIN_COMPONENT_ICONS } from './views.js';
 
 const WEEKDAYS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+const WEEKDAYS_LONG = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
 
 // ---- Datumsrechnung ----
 
@@ -114,30 +115,41 @@ export function renderWeek(container, monday, entries, recipes, imageUrls, {
     const entry = entries[iso];
     const recipe = entry?.recipe_id && !entry.is_day_off ? recipes.find((r) => r.id === entry.recipe_id) : null;
 
-    const card = el('div', 'day-card');
-    if (iso === today) card.classList.add('is-today');
-    if (iso < today) card.classList.add('is-past');
+    // Zeitleiste: Punkt auf der Linie, darüber der Tag, darunter die Karte
+    const isToday = iso === today;
+    const label = el('div', 'day-label', isToday
+      ? `Heute · ${WEEKDAYS_LONG[i]}`
+      : `${WEEKDAYS_LONG[i]} ${date.getDate()}.`);
 
-    const dateBox = el('div', 'day-date');
-    dateBox.append(el('span', 'day-weekday', WEEKDAYS[i]), el('span', 'day-number', String(date.getDate())));
-    if (iso === today) dateBox.append(el('span', 'day-today', 'Heute'));
+    const card = el('div', 'day-card');
+    if (isToday) card.classList.add('is-today');
 
     // Antippen des Tages öffnet das Menü für diesen Tag (dort auch "Rezept ansehen")
     const content = el('button', 'day-content');
     content.type = 'button';
     content.addEventListener('click', () => onEdit(iso));
     if (recipe) {
+      const image = thumbnail(recipe, imageUrls[recipe.image_path]);
+      if (isToday) {
+        // Heute: großes Bild über dem Namen
+        card.classList.add('has-hero');
+        image.classList.add('day-hero');
+      }
       const text = el('div', 'day-text');
-      const name = el('span', 'day-recipe-name', recipe.name);
-      const badges = [entry.is_locked ? '🔒' : null, entry.is_purchased ? '🛒' : null].filter(Boolean);
-      if (badges.length > 0) name.prepend(el('span', 'day-badges', badges.join(' ')));
       const meta = [recipe.prep_time_minutes ? recipe.prep_time_minutes + ' Min.' : null, MAIN_COMPONENT_LABELS[recipe.main_component]];
-      text.append(name, el('span', 'day-recipe-meta', meta.filter(Boolean).join(' · ')));
-      content.append(thumbnail(recipe, imageUrls[recipe.image_path]), text);
+      text.append(el('span', 'day-recipe-name', recipe.name), el('span', 'day-recipe-meta', meta.filter(Boolean).join(' · ')));
+      const badges = [entry.is_purchased ? 'Gekauft' : null, entry.is_locked ? 'Festgehalten' : null].filter(Boolean);
+      if (badges.length > 0) {
+        const row = el('span', 'day-badges');
+        for (const badge of badges) row.append(el('span', 'day-badge' + (badge === 'Gekauft' ? ' is-purchased' : ''), badge));
+        text.append(row);
+      }
+      content.append(image, text);
     } else {
       content.classList.add('is-empty');
+      card.classList.add('is-empty');
       if (entry?.is_day_off) {
-        content.append(el('span', 'day-empty-icon', '🍽'), el('span', null, 'Frei – heute wird nicht gekocht'));
+        content.append(el('span', null, 'Frei – heute wird nicht gekocht'));
       } else if (entry?.recipe_id) {
         content.append(el('span', null, 'Rezept nicht gefunden'));
       } else {
@@ -147,14 +159,17 @@ export function renderWeek(container, monday, entries, recipes, imageUrls, {
 
     const menu = el('button', 'day-menu', '⋯');
     menu.type = 'button';
-    menu.setAttribute('aria-label', `${WEEKDAYS[i]} ${date.getDate()}. bearbeiten`);
+    menu.setAttribute('aria-label', `${WEEKDAYS_LONG[i]} ${date.getDate()}. bearbeiten`);
     menu.addEventListener('click', () => onEdit(iso));
 
-    card.append(dateBox, content, menu);
-    const item = el('li');
+    card.append(content, menu);
+    const item = el('li', 'day-item');
+    if (isToday) item.classList.add('is-today');
+    if (iso < today) item.classList.add('is-past');
+    if (!recipe) item.classList.add('is-open');
     item.style.setProperty('--i', shown++);
     if (highlight.has(iso)) item.classList.add('just-planned');
-    item.append(card);
+    item.append(el('span', 'day-dot'), label, card);
     container.append(item);
   }
 }
