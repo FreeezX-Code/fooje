@@ -69,12 +69,18 @@ Das Modell so anlegen, dass später Felder und Tabellen für die Wochenplanung e
    - Senden an Bring! über eine Supabase-Funktion (inoffizielle API). Zugangsdaten nur als Geheimnis in Supabase. Empfohlen: eigenes Bring!-Konto (E-Mail + Passwort) nur für die App, Mitglied der gemeinsamen Liste – unser Haupt-Login läuft über Google/Apple
    - Nach dem Senden Rückfrage, ob die Tage als „Zutaten gekauft“ markiert werden sollen
    - Fallback „Als Text teilen“ (funktioniert auch ohne Bring!)
-4. **Import aus Web und TikTok** ← AKTUELL
-   - Supabase-Funktion lädt die Seite (der Browser darf fremde Seiten nicht direkt laden): Webrezepte über Schema.org-Daten, TikTok über die Videobeschreibung (Rezepte, die nur im Video gesprochen werden, sind nicht auslesbar)
+4. **Import aus Web und TikTok** ✓ abgeschlossen
+   - Supabase-Funktion lädt die Seite (der Browser darf fremde Seiten nicht direkt laden): Webrezepte über Schema.org-Daten, sonst Seitentext; TikTok über die Videobeschreibung (Rezepte, die nur im Video gesprochen werden, sind nicht auslesbar)
+   - Seiten mit Bot-Schutz (z. B. Rewe) blockieren den Abruf: Dann öffnet sich „Rezepttext einfügen“ – Text im Browser kopieren und einfügen, der Link bleibt als Quelle
    - Claude (Anthropic-API, Schlüssel nur als Supabase-Geheimnis) bereitet bei jedem Import auf: Zutaten sauber in Menge/Einheit/Name, Schritte, Portionen, Zeit, Hauptkomponente, Beilage, Tags
-   - Bild der Webseite wird automatisch übernommen (verkleinert)
-   - Android: Teilen-Menü direkt in die App (Web Share Target). iPhone: in der App „Rezept importieren“ mit „Aus Zwischenablage einfügen“ (kein Kurzbefehl)
+   - Bild der Webseite wird automatisch übernommen (verkleinert); im Formular kann ein Foto auch aus der Zwischenablage eingefügt werden
+   - Beide Handys: in der App „Rezept importieren“ mit „Aus Zwischenablage einfügen“. Teilen-Menü direkt in die App (Web Share Target) ist eingebaut, geht aber nur mit Chrome auf Android – wird von uns nicht genutzt
    - Ergebnis ist ein Entwurf im normalen Rezeptformular (Prüf-Bildschirm), gespeichert wird erst nach dem Prüfen; Hinweis, wenn dieselbe Quelle schon als Rezept existiert
+5. **Design-Runde 2** ← AKTUELL
+   - Ziel: Die App soll insgesamt hochwertiger und stimmiger wirken, Schwerpunkt Wochenplan (Hauptbildschirm). Keine neuen Funktionen
+   - Vorgehen: Pro Bildschirm zeigt Claude zuerst 2–3 Entwürfe als Bilder im Chat, wir wählen einen, dann wird umgebaut und am Handy geprüft
+   - Bleibt: Anthrazit, folgt Hell/Dunkel des Handys, dezente Animationen, große Schaltflächen
+   - Später (verschoben): automatische Planung am gewählten Wochentag mit Benachrichtigung
 
 Nur an der aktuellen Stufe arbeiten. Spätere Stufen nicht vorwegnehmen.
 
@@ -82,8 +88,7 @@ Nur an der aktuellen Stufe arbeiten. Spätere Stufen nicht vorwegnehmen.
 
 - **Hauptweg ist der Import:** Rezepte werden vor allem aus geteilten Websites und Videos (z. B. TikTok) angelegt, mit KI-Unterstützung durch Claude (Stufe 4). Von Hand abtippen ist nur die Notlösung.
 - **Das Formular ist der Prüf-Bildschirm:** Ein Import erzeugt einen Entwurf, der im normalen Rezeptformular vorausgefüllt geöffnet wird. Dort wird geprüft, korrigiert und gespeichert. Das Formular muss deshalb gut mit vorausgefüllten Daten funktionieren.
-- **KI-Anbindung:** Die App ruft eine Supabase-Funktion auf, diese fragt Claude über die Anthropic-API. Der API-Schlüssel liegt nur in der Supabase-Funktion. Dafür wird in Stufe 4 ein Anthropic-Konto nötig.
-- **Übergangslösung bis Stufe 4:** Links oder Videobeschreibungen im Chat an Claude Code geben. Claude erstellt daraus eine JSON-Datei im Format des Backup-Imports (Stufe 1), die in der App importiert wird.
+- **KI-Anbindung:** Die App ruft eine Supabase-Funktion auf, diese fragt Claude über die Anthropic-API. Der API-Schlüssel liegt nur in der Supabase-Funktion. Dafür gibt es ein eigenes Anthropic-Konto (Kosten etwa 3–6 Cent pro Import).
 
 ## Bedienung
 
