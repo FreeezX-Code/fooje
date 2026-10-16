@@ -60,6 +60,9 @@ export function isPublicUrl(text) {
   const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, '');
   if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') || host.endsWith('.internal')) return false;
   if (!host.includes('.') && !host.includes(':')) return false;
+  // Reine Zahl-Adressen (IP statt Name) abweisen – auch getarnt als Oktal/Hex wie 0177.0.0.1.
+  // Echte Rezeptseiten enden immer auf einen Namen (z. B. ".de"), nie auf eine Zahl.
+  if (/^\d+$/.test(host.split('.').pop())) return false;
   if (/^(127\.|10\.|0\.|169\.254\.|192\.168\.)/.test(host)) return false;
   if (/^172\.(1[6-9]|2\d|3[01])\./.test(host)) return false;
   if (/^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(host)) return false;
@@ -313,7 +316,7 @@ async function importTikTok(url, fetchFn) {
 
 // Eingefügter Rezepttext (für Seiten mit Bot-Schutz, Rezepte aus Apps, Mails …)
 const MIN_TEXT = 30;
-const MAX_TEXT = 20_000;
+const MAX_TEXT = 15_000;
 
 function importText(text, url) {
   return {
@@ -436,7 +439,7 @@ export function cleanDraft(output) {
 export async function prepareWithClaude(raw, claude) {
   const response = await claude.createMessage({
     model: 'claude-opus-5-5',
-    max_tokens: 16000,
+    max_tokens: 4000,
     // Lehnen die Sicherheitsfilter eine harmlose Anfrage fälschlich ab, übernimmt ein anderes Modell
     betas: ['server-side-fallback-2026-07-01'],
     fallbacks: 'default',
