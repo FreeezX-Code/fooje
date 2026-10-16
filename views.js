@@ -93,18 +93,15 @@ export function renderRecipeList(container, recipes, imageUrls, animate = false)
   container.replaceChildren();
   container.classList.toggle('animate-in', animate);
   recipes.forEach((recipe, index) => {
-    // Karte: Foto (oder Farbkachel), darauf unten Name (+ ★) und Eckdaten
+    // Kachel im Raster: Foto (oder Farbkachel) oben, darunter Name und Eckdaten; ★ oben rechts auf dem Bild
     const link = el('a', 'recipe-card');
     link.href = '#/recipe/' + recipe.id;
+    link.append(recipeImage(recipe, imageUrls[recipe.image_path], 'recipe-card-image'));
+    if (recipe.is_favorite) link.append(el('span', 'recipe-card-favorite', '★'));
 
-    const title = el('div', 'recipe-card-title');
-    title.append(el('span', 'recipe-card-name', recipe.name));
-    if (recipe.is_favorite) title.append(el('span', 'favorite', '★'));
-
-    const overlay = el('div', 'recipe-card-overlay');
-    overlay.append(title, el('span', 'recipe-card-meta', metaLine(recipe)));
-
-    link.append(recipeImage(recipe, imageUrls[recipe.image_path], 'recipe-card-image'), overlay);
+    const body = el('div', 'recipe-card-body');
+    body.append(el('span', 'recipe-card-name', recipe.name), el('span', 'recipe-card-meta', metaLine(recipe)));
+    link.append(body);
 
     const item = el('li');
     item.style.setProperty('--i', Math.min(index, 8)); // Verzögerung fürs Einschweben
@@ -117,7 +114,7 @@ export function renderRecipeList(container, recipes, imageUrls, animate = false)
 export function renderSkeletonList(container) {
   container.replaceChildren();
   container.classList.remove('animate-in');
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 4; i++) {
     const item = el('li');
     item.append(el('div', 'skeleton-card'));
     container.append(item);
@@ -138,33 +135,38 @@ export function renderRecipeDetail(container, recipe, imageUrl, onDelete) {
       history.back();
     }
   });
-  container.append(back);
+  // Oben das Bild, "Zurück" liegt darauf
+  const hero = el('div', 'detail-hero');
+  hero.append(recipeImage(recipe, imageUrl, 'recipe-hero'), back);
+  container.append(hero);
 
-  container.append(recipeImage(recipe, imageUrl, 'recipe-hero'));
+  // Der Inhalt schiebt sich leicht über das Bild
+  const body = el('div', 'detail-body');
+  container.append(body);
 
   const title = el('h2', 'recipe-title', recipe.name);
   if (recipe.is_favorite) title.append(el('span', 'favorite', ' ★'));
-  container.append(title);
+  body.append(title);
 
-  // Eckdaten als kleine Kärtchen
-  const facts = el('ul', 'facts');
-  const addFact = (icon, text) => {
-    if (!text) return;
-    const fact = el('li', 'fact');
-    fact.append(el('span', 'fact-icon', icon), el('span', null, text));
-    facts.append(fact);
+  // Eckdaten als drei Kästchen: Zeit | Portionen | Hauptkomponente (mit Beilage)
+  const stats = el('ul', 'stats');
+  const addStat = (value, label) => {
+    const stat = el('li', 'stat');
+    stat.append(el('span', 'stat-value', value), el('span', 'stat-label', label));
+    stats.append(stat);
   };
-  addFact('⏱', recipe.prep_time_minutes ? recipe.prep_time_minutes + ' Min.' : null);
-  addFact('👥', recipe.servings ? recipe.servings + (recipe.servings === 1 ? ' Portion' : ' Portionen') : null);
-  addFact(MAIN_COMPONENT_ICONS[recipe.main_component], MAIN_COMPONENT_LABELS[recipe.main_component]);
-  addFact('🍽', recipe.side_dish !== 'none' ? 'mit ' + SIDE_DISH_LABELS[recipe.side_dish] : null);
-  addFact('📅', recipe.last_cooked_on ? 'zuletzt ' + formatDate(recipe.last_cooked_on) : null);
-  container.append(facts);
+  addStat(recipe.prep_time_minutes ? String(recipe.prep_time_minutes) : '–', 'Minuten');
+  addStat(recipe.servings ? String(recipe.servings) : '–', recipe.servings === 1 ? 'Portion' : 'Portionen');
+  addStat(MAIN_COMPONENT_LABELS[recipe.main_component] ?? '–',
+    recipe.side_dish && recipe.side_dish !== 'none' ? 'mit ' + SIDE_DISH_LABELS[recipe.side_dish] : 'ohne Beilage');
+  body.append(stats);
+
+  if (recipe.last_cooked_on) body.append(el('p', 'muted last-cooked', 'Zuletzt gekocht am ' + formatDate(recipe.last_cooked_on)));
 
   if (recipe.tags.length > 0) {
     const tags = el('ul', 'tags');
     for (const tag of recipe.tags) tags.append(el('li', 'tag', tag));
-    container.append(tags);
+    body.append(tags);
   }
 
   // Zutaten: Menge links, Zutat rechts
@@ -181,7 +183,7 @@ export function renderRecipeDetail(container, recipe, imageUrl, onDelete) {
   } else {
     ingredientCard.append(el('p', 'muted', 'Keine Zutaten eingetragen.'));
   }
-  container.append(ingredientCard);
+  body.append(ingredientCard);
 
   // Zubereitung: nummerierte Schritte
   const stepCard = el('section', 'detail-card');
@@ -193,7 +195,7 @@ export function renderRecipeDetail(container, recipe, imageUrl, onDelete) {
   } else {
     stepCard.append(el('p', 'muted', 'Keine Schritte eingetragen.'));
   }
-  container.append(stepCard);
+  body.append(stepCard);
 
   if (isWebLink(recipe.source_url)) {
     const source = el('p', 'source');
@@ -202,7 +204,7 @@ export function renderRecipeDetail(container, recipe, imageUrl, onDelete) {
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
     source.append(link);
-    container.append(source);
+    body.append(source);
   }
 
   const actions = el('div', 'detail-actions');
@@ -212,5 +214,5 @@ export function renderRecipeDetail(container, recipe, imageUrl, onDelete) {
   remove.type = 'button';
   remove.addEventListener('click', () => onDelete(recipe));
   actions.append(edit, remove);
-  container.append(actions);
+  body.append(actions);
 }
