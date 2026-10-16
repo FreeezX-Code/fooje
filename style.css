@@ -14,7 +14,7 @@
   --color-text: #1f2023;
   --color-muted: #6b6c70;
   --color-border: #e2e2de;
-  --color-primary: #2b2d31;      /* Anthrazit: Knöpfe, aktive Filter */
+  --color-primary: #2b2d31;      /* Anthrazit (Knöpfe und Auswahl nutzen inzwischen --color-accent) */
   --color-on-primary: #ffffff;   /* Schrift auf Anthrazit */
   --color-soft: #e7e7e4;         /* zarte Flächen, z. B. Tags, Schrittnummern */
   --color-error: #b3261e;
@@ -268,8 +268,8 @@ body.has-tab-bar .fab {
 }
 
 .button-primary {
-  color: var(--color-on-primary);
-  background: var(--color-primary);
+  color: var(--color-on-accent);
+  background: var(--color-accent);
   border: none;
 }
 
@@ -288,9 +288,9 @@ body.has-tab-bar .fab {
   min-height: 44px;
   padding: 0;
   font: inherit;
-  color: var(--color-text);
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  font-weight: 600;
+  color: var(--color-accent);
+  text-decoration: none;
   background: none;
   border: none;
   cursor: pointer;
@@ -386,7 +386,7 @@ body.has-tab-bar .fab {
 .search-input:focus {
   outline: none;
   background-color: var(--color-surface);
-  border-color: var(--color-primary);
+  border-color: var(--color-accent);
 }
 
 .form-row {
@@ -409,7 +409,7 @@ body.has-tab-bar .fab {
   min-height: 0;
   height: 24px;
   padding: 0;
-  accent-color: var(--color-primary);
+  accent-color: var(--color-accent);
   -webkit-appearance: checkbox;
   appearance: checkbox;
 }
@@ -420,6 +420,12 @@ body.has-tab-bar .fab {
   padding-top: 24px;
   text-align: center;
   animation: fade-up 0.5s var(--ease) both;
+}
+
+/* Vor dem Anmelden keine Seitenüberschrift ("Wochenplan") zeigen */
+body:has(#login-view:not([hidden])) .app-header,
+body:has(#loading-view:not([hidden])) .app-header {
+  visibility: hidden;
 }
 
 .login-logo {
@@ -1255,9 +1261,9 @@ body.has-tab-bar .fab {
   height: 28px;
   font-size: 0.95rem;
   font-weight: 700;
-  color: var(--color-on-primary);
-  background: var(--color-primary);
-  border: 2px solid var(--color-primary);
+  color: var(--color-on-accent);
+  background: var(--color-accent);
+  border: 2px solid var(--color-accent);
   border-radius: 50%;
   transition: background-color 0.2s, border-color 0.2s, transform 0.15s var(--ease);
 }
@@ -1498,6 +1504,7 @@ body.sheet-open {
 
 .rule-head {
   margin-bottom: -4px;
+  padding-left: 10px;
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--color-muted);
@@ -1550,11 +1557,11 @@ body.sheet-open {
 }
 
 .form input.switch:checked {
-  background: var(--color-primary);
+  background: var(--color-accent);
 }
 
 .form input.switch:checked::before {
-  background: var(--color-on-primary);
+  background: #ffffff;
   transform: translateX(20px);
 }
 

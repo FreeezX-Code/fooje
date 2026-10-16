@@ -18,7 +18,7 @@ function daySelect(name, label, withAny) {
 // Kopfzeile einmal oben, dann eine Zeile pro Hauptkomponente: Symbol + Name | mindestens | höchstens
 const head = document.createElement('div');
 head.className = 'rule-row rule-head';
-for (const text of ['', 'mindestens', 'höchstens']) {
+for (const text of ['', 'min.', 'max.']) { // kurz, sonst überlappen sich die Spalten
   const cell = document.createElement('span');
   cell.textContent = text;
   head.append(cell);
