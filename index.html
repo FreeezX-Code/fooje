@@ -215,93 +215,87 @@
       </div>
 
       <div id="form-view" hidden>
-        <h2 id="form-title" class="form-title">Neues Rezept</h2>
-        <div id="form-notice" class="form-notice" hidden></div>
-        <form id="recipe-form" class="form">
-          <section class="form-card">
-            <label>
-              Name
-              <input name="name" type="text" required autocomplete="off" placeholder="z. B. Gemüse-Lasagne">
-            </label>
-
-            <div class="image-field">
-              <img id="image-preview" class="image-preview" alt="Vorschau des Rezeptbilds" hidden>
-              <div class="image-actions">
-                <label class="image-pick">
-                  <span aria-hidden="true">📷</span>
-                  <span id="image-pick-text">Foto hinzufügen</span>
-                  <input id="image-input" type="file" accept="image/*" hidden>
-                </label>
-                <button id="image-paste" type="button" class="image-paste" aria-label="Foto aus der Zwischenablage einfügen">📋 Einfügen</button>
-                <button id="image-remove" type="button" class="image-remove" hidden>Entfernen</button>
-              </div>
-              <p id="image-error" class="error" role="alert"></p>
+        <!-- Sieht aus wie die Rezeptansicht: Werte werden direkt an ihrer Stelle geändert -->
+        <form id="recipe-form" class="form recipe-edit">
+          <div class="detail-hero edit-hero">
+            <img id="image-preview" class="image-preview recipe-hero" alt="Vorschau des Rezeptbilds" hidden>
+            <div id="image-placeholder" class="recipe-placeholder recipe-hero" aria-hidden="true">🍽️</div>
+            <button id="cancel-button" type="button" class="hero-button edit-cancel">‹ Abbrechen</button>
+            <div class="image-actions">
+              <label class="image-pick hero-button">
+                <span aria-hidden="true">📷</span>
+                <span id="image-pick-text">Foto hinzufügen</span>
+                <input id="image-input" type="file" accept="image/*" hidden>
+              </label>
+              <button id="image-paste" type="button" class="image-paste hero-button" aria-label="Foto aus der Zwischenablage einfügen">📋</button>
+              <button id="image-remove" type="button" class="image-remove hero-button" aria-label="Foto entfernen" hidden>✕</button>
             </div>
+          </div>
 
-            <div class="form-row">
-              <label>
-                Hauptkomponente
-                <select name="main_component" required>
-                  <option value="" disabled selected>Bitte wählen</option>
+          <div class="detail-body edit-body">
+            <p id="form-title" class="edit-title">Neues Rezept</p>
+            <div id="form-notice" class="form-notice" hidden></div>
+            <p id="image-error" class="error" role="alert"></p>
+
+            <input name="name" class="edit-name" type="text" required autocomplete="off" placeholder="Name des Rezepts" aria-label="Name">
+
+            <div class="stats edit-stats">
+              <label class="stat">
+                <input name="prep_time_minutes" class="stat-value" type="number" min="0" step="1" inputmode="numeric" placeholder="–">
+                <span class="stat-label">Minuten</span>
+              </label>
+              <label class="stat">
+                <input name="servings" class="stat-value" type="number" min="1" step="1" inputmode="numeric" placeholder="–">
+                <span class="stat-label">Portionen</span>
+              </label>
+              <div class="stat">
+                <select name="main_component" class="stat-value" required aria-label="Hauptkomponente">
+                  <option value="" disabled selected>Wählen</option>
                 </select>
-              </label>
-              <label>
-                Beilage
-                <select name="side_dish"></select>
-              </label>
+                <select name="side_dish" class="stat-label" aria-label="Beilage"></select>
+              </div>
             </div>
-            <div class="form-row">
-              <label>
-                Portionen
-                <input name="servings" type="number" min="1" step="1" inputmode="numeric">
-              </label>
-              <label>
-                Zeit (Min.)
-                <input name="prep_time_minutes" type="number" min="0" step="1" inputmode="numeric">
-              </label>
+            <p class="muted edit-hint">Tippe auf einen Wert, um ihn zu ändern.</p>
+
+            <section class="detail-card">
+              <h3>Zutaten</h3>
+              <div id="ingredient-rows" class="rows"></div>
+              <button id="add-ingredient" type="button" class="add-button">+ Zutat</button>
+            </section>
+
+            <section class="detail-card">
+              <h3>Zubereitung</h3>
+              <div id="step-rows" class="rows"></div>
+              <button id="add-step" type="button" class="add-button">+ Schritt</button>
+            </section>
+
+            <details id="more-details" class="detail-card more-details">
+              <summary>Weitere Angaben <span class="muted">(Tags, Quelle, Favorit …)</span></summary>
+              <div class="more-details-body">
+                <label>
+                  Tags
+                  <input name="tags" type="text" placeholder="z. B. schnell, Sommer" autocomplete="off">
+                </label>
+                <label>
+                  Quelle (Link)
+                  <input name="source_url" type="url" placeholder="https://…" inputmode="url" autocomplete="off">
+                </label>
+                <label>
+                  Zuletzt gekocht
+                  <input name="last_cooked_on" type="date">
+                </label>
+                <label class="checkbox-label">
+                  <input name="is_favorite" type="checkbox">
+                  Favorit
+                </label>
+              </div>
+            </details>
+
+            <p id="form-error" class="error" role="alert"></p>
+            <!-- Bleibt unten am Bildschirm stehen, damit man nicht ans Ende scrollen muss -->
+            <div class="form-actions">
+              <button id="save-button" type="submit" class="button-primary">Speichern</button>
             </div>
-          </section>
-
-          <section class="form-card">
-            <h3>Zutaten</h3>
-            <div id="ingredient-rows" class="rows"></div>
-            <button id="add-ingredient" type="button" class="add-button">+ Zutat hinzufügen</button>
-          </section>
-
-          <section class="form-card">
-            <h3>Zubereitung</h3>
-            <div id="step-rows" class="rows"></div>
-            <button id="add-step" type="button" class="add-button">+ Schritt hinzufügen</button>
-          </section>
-
-          <details id="more-details" class="form-card more-details">
-            <summary>Weitere Angaben <span class="muted">(Tags, Quelle, Favorit …)</span></summary>
-            <div class="more-details-body">
-              <label>
-                Tags
-                <input name="tags" type="text" placeholder="z. B. schnell, Sommer" autocomplete="off">
-              </label>
-              <label>
-                Quelle (Link)
-                <input name="source_url" type="url" placeholder="https://…" inputmode="url" autocomplete="off">
-              </label>
-              <label>
-                Zuletzt gekocht
-                <input name="last_cooked_on" type="date">
-              </label>
-              <label class="checkbox-label">
-                <input name="is_favorite" type="checkbox">
-                Favorit
-              </label>
-            </div>
-          </details>
-
-          <p id="form-error" class="error" role="alert"></p>
-
-          <!-- Bleibt unten am Bildschirm stehen, damit man nicht ans Ende scrollen muss -->
-          <div class="form-actions">
-            <button id="cancel-button" type="button" class="button-secondary">Abbrechen</button>
-            <button id="save-button" type="submit" class="button-primary">Speichern</button>
           </div>
         </form>
       </div>

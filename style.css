@@ -2011,3 +2011,269 @@ body.sheet-open {
   -webkit-backdrop-filter: blur(16px);
   border-top: 1px solid var(--color-border);
 }
+
+/* ---------- Formular im Stil der Rezeptansicht (Werte direkt an ihrer Stelle ändern) ---------- */
+
+.recipe-edit {
+  gap: 0;
+}
+
+/* Bild oben: Foto oder Farbkachel, darauf "Abbrechen" und die Foto-Knöpfe */
+.recipe-edit .image-preview {
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+
+.hero-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 14px;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1f2023;
+  background: rgba(255, 255, 255, 0.92);
+  border: none;
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: transform 0.15s var(--ease);
+}
+
+.hero-button:active {
+  transform: scale(0.95);
+}
+
+.edit-cancel {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+}
+
+.recipe-edit .image-actions {
+  position: absolute;
+  right: 12px;
+  bottom: 40px; /* über dem Rand des Inhalts, der sich über das Bild schiebt */
+  display: flex;
+  gap: 6px;
+}
+
+.recipe-edit .image-pick,
+.recipe-edit .image-pick.has-image {
+  flex: none;
+  flex-direction: row;
+  min-height: 40px;
+  font-size: 0.95rem;
+  color: #1f2023;
+  background: rgba(255, 255, 255, 0.92);
+  border: none;
+}
+
+.recipe-edit .image-paste,
+.recipe-edit .image-remove {
+  width: 40px;
+  padding: 0;
+  color: #1f2023;
+}
+
+.recipe-edit .image-remove {
+  color: #b3261e;
+}
+
+.edit-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.edit-title {
+  margin: 0 0 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+.edit-body .form-notice {
+  margin: 4px 0 10px;
+}
+
+.edit-body #image-error:empty {
+  display: none;
+}
+
+/* Eingabefelder sehen aus wie Text, gestrichelt unterstrichen; beim Antippen ein Feld */
+.recipe-edit .edit-name {
+  min-height: 0;
+  margin: 0 0 14px;
+  padding: 2px 4px;
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  background: none;
+  border: none;
+  border-bottom: 2px dashed var(--color-border);
+  border-radius: 6px 6px 0 0;
+}
+
+.recipe-edit .edit-name:focus {
+  background: var(--color-surface);
+  border-color: var(--color-accent);
+}
+
+.recipe-edit .edit-stats {
+  margin-bottom: 0;
+}
+
+.recipe-edit .stat {
+  gap: 0;
+  padding: 6px 4px;
+  font-size: inherit;
+  color: var(--color-text);
+  border: 2px solid transparent;
+  transition: border-color 0.2s;
+}
+
+.recipe-edit .stat:focus-within {
+  border-color: var(--color-accent);
+}
+
+.recipe-edit .stat input,
+.recipe-edit .stat select {
+  width: 100%;
+  min-height: 0;
+  padding: 2px 0;
+  text-align: center;
+  text-align-last: center;
+  background: none;
+  border: none;
+  border-radius: 0;
+}
+
+.recipe-edit .stat input.stat-value,
+.recipe-edit .stat select.stat-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+/* Kleine Zeile darunter: "Minuten", "Portionen" bzw. die Beilage (mind. 16px, sonst zoomt das iPhone) */
+.recipe-edit .stat select.stat-label {
+  font-size: 16px;
+  color: var(--color-muted);
+}
+
+.recipe-edit .stat span.stat-label {
+  padding: 2px 0;
+  font-size: 0.8rem;
+  font-weight: normal;
+}
+
+.recipe-edit .stat select {
+  background-image: none;
+}
+
+.recipe-edit .stat input:focus,
+.recipe-edit .stat select:focus {
+  background: none;
+}
+
+.edit-hint {
+  margin: 8px 0 0;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.recipe-edit .detail-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Zutaten: wie in der Rezeptansicht, Menge grau links, Trennlinien */
+.recipe-edit .rows {
+  gap: 0;
+}
+
+.recipe-edit .ingredient-row {
+  grid-template-columns: 5.5em 1fr 36px;
+  gap: 8px;
+  align-items: center;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.recipe-edit .ingredient-row input,
+.recipe-edit .step-row textarea {
+  min-height: 44px;
+  padding: 8px 4px;
+  background: none;
+  border-radius: 8px;
+}
+
+.recipe-edit .ingredient-row .ingredient-quantity {
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+.recipe-edit .ingredient-row input:focus,
+.recipe-edit .step-row textarea:focus {
+  background: var(--color-field);
+  border-color: transparent;
+}
+
+/* Schritte: violette Nummer im Kreis wie in der Rezeptansicht */
+.recipe-edit .step-row {
+  grid-template-columns: 32px 1fr 36px;
+  gap: 10px;
+  padding: 6px 0;
+}
+
+.recipe-edit .step-row::before {
+  content: counter(step);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-top: 6px;
+  padding: 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--color-on-accent);
+  background: var(--color-accent);
+  border-radius: 50%;
+}
+
+.recipe-edit .step-row textarea {
+  line-height: 1.5;
+}
+
+.recipe-edit .row-remove {
+  min-height: 40px;
+}
+
+.recipe-edit .add-button {
+  color: var(--color-accent);
+}
+
+.recipe-edit .more-details {
+  padding: 0;
+}
+
+.recipe-edit #form-error:not(:empty) {
+  margin-top: 16px;
+}
+
+/* Unten nur noch "Speichern" (Abbrechen sitzt oben auf dem Bild) */
+.recipe-edit .form-actions {
+  grid-template-columns: 1fr;
+  margin-top: 20px;
+  /* 4px mehr als sonst: der Inhaltsbereich hat selbst 4px Rand */
+  margin-right: calc(-20px - var(--safe-right));
+  margin-left: calc(-20px - var(--safe-left));
+}
+
+.recipe-edit .form-actions .button-primary {
+  color: var(--color-on-accent);
+  background: var(--color-accent);
+}

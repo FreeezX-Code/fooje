@@ -1,6 +1,6 @@
 // Das Formular zum Anlegen und Bearbeiten eines Rezepts:
 // Werte hineinschreiben (fillRecipeForm) und wieder auslesen (readRecipeForm).
-import { MAIN_COMPONENT_LABELS, SIDE_DISH_LABELS } from './views.js';
+import { MAIN_COMPONENT_LABELS, MAIN_COMPONENT_ICONS, SIDE_DISH_LABELS } from './views.js';
 
 const form = document.getElementById('recipe-form');
 const formTitle = document.getElementById('form-title');
@@ -9,6 +9,7 @@ const stepRows = document.getElementById('step-rows');
 const moreDetails = document.getElementById('more-details');
 
 const imagePreview = document.getElementById('image-preview');
+const imagePlaceholder = document.getElementById('image-placeholder');
 const imageInput = document.getElementById('image-input');
 const imagePickText = document.getElementById('image-pick-text');
 const imageRemove = document.getElementById('image-remove');
@@ -41,8 +42,16 @@ async function resizeImage(file) {
   });
 }
 
+// Ohne Foto: Farbkachel mit Symbol der gewählten Hauptkomponente (wie in der Rezeptansicht)
+function updatePlaceholder() {
+  const main = field('main_component').value;
+  imagePlaceholder.dataset.main = main;
+  imagePlaceholder.textContent = MAIN_COMPONENT_ICONS[main] || '🍽️';
+}
+
 function showPreview(url) {
   imagePreview.hidden = !url;
+  imagePlaceholder.hidden = Boolean(url);
   if (url) imagePreview.src = url;
   else imagePreview.removeAttribute('src');
   imageRemove.hidden = !url;
@@ -132,7 +141,11 @@ function fillSelect(select, labels) {
   for (const [value, label] of Object.entries(labels)) select.add(new Option(label, value));
 }
 fillSelect(field('main_component'), MAIN_COMPONENT_LABELS);
-fillSelect(field('side_dish'), SIDE_DISH_LABELS);
+// Beilage steht klein unter der Hauptkomponente: "mit Reis" bzw. "ohne Beilage"
+fillSelect(field('side_dish'), Object.fromEntries(
+  Object.entries(SIDE_DISH_LABELS).map(([value, label]) => [value, value === 'none' ? 'ohne Beilage' : 'mit ' + label])
+));
+field('main_component').addEventListener('change', updatePlaceholder);
 
 function textInput(className, placeholder, value) {
   const input = document.createElement('input');
@@ -212,6 +225,7 @@ export function fillRecipeForm(recipe, imageUrl = null) {
   field('name').value = recipe?.name ?? '';
   field('main_component').value = recipe?.main_component ?? '';
   field('side_dish').value = recipe?.side_dish ?? 'none';
+  updatePlaceholder();
   field('servings').value = recipe?.servings ?? '';
   field('prep_time_minutes').value = recipe?.prep_time_minutes ?? '';
   field('tags').value = (recipe?.tags ?? []).join(', ');
