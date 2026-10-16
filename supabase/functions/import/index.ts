@@ -67,6 +67,14 @@ export function isPublicUrl(text) {
   return true;
 }
 
+// Die Seite lässt keine automatischen Abrufe zu – dann muss der Rezepttext eingefügt werden
+class BlockedError extends Error {
+  constructor() {
+    super('Diese Seite blockiert automatische Abrufe (Bot-Schutz). Öffne das Rezept im Browser, kopiere Zutaten und Zubereitung und füge sie hier als Text ein.');
+    this.blocked = true;
+  }
+}
+
 // Laden mit Zeit- und Größenbegrenzung; prüft auch das Ziel nach Weiterleitungen
 async function fetchLimited(url, fetchFn, maxBytes, extraHeaders = {}) {
   const response = await fetchFn(url, {
@@ -76,6 +84,8 @@ async function fetchLimited(url, fetchFn, maxBytes, extraHeaders = {}) {
   });
   const finalUrl = response.url || url;
   if (!isPublicUrl(finalUrl)) throw new Error('Diese Adresse kann nicht geladen werden.');
+  // 403/429/503: meist ein Bot-Schutz (z. B. Cloudflare), der Server-Anfragen grundsätzlich blockt
+  if ([401, 403, 429, 503].includes(response.status)) throw new BlockedError();
   if (!response.ok) throw new Error(`Die Seite antwortet mit Fehler ${response.status}.`);
   const declared = Number(response.headers.get('content-length') ?? 0);
   if (declared > maxBytes) throw new Error('Die Seite ist zu groß.');
@@ -301,6 +311,27 @@ async function importTikTok(url, fetchFn) {
   };
 }
 
+// Eingefügter Rezepttext (für Seiten mit Bot-Schutz, Rezepte aus Apps, Mails …)
+const MIN_TEXT = 30;
+const MAX_TEXT = 20_000;
+
+function importText(text, url) {
+  return {
+    kind: 'text',
+    structured: false,
+    source_url: url && isPublicUrl(url) ? canonicalUrl('', url) : '',
+    title: '',
+    description: '',
+    ingredients: [],
+    steps: [],
+    servings: null,
+    prep_time_minutes: null,
+    keywords: [],
+    image_url: null,
+    page_text: text.slice(0, MAX_TEXT),
+  };
+}
+
 // Bild laden und als Text (Base64) mitschicken, damit die App es wie ein eigenes Foto behandeln kann
 async function loadImage(url, fetchFn) {
   if (!url || !isPublicUrl(url)) return null;
@@ -368,7 +399,8 @@ Ist die Vorlage nicht auf Deutsch, übersetze alles ins Deutsche.`;
 
 // Ausgelesene Daten als Text für Claude zusammenstellen
 export function describeForClaude(raw) {
-  const lines = [`Quelle: ${raw.kind === 'tiktok' ? 'TikTok-Video' : 'Webseite'} (${raw.source_url})`];
+  const origin = { tiktok: 'TikTok-Video', text: 'von Hand eingefügter Rezepttext', web: 'Webseite' }[raw.kind];
+  const lines = [`Quelle: ${origin}${raw.source_url ? ` (${raw.source_url})` : ''}`];
   if (raw.title) lines.push(`Titel: ${raw.title}`);
   if (raw.author) lines.push(`Von: ${raw.author}`);
   if (raw.description) lines.push(`Beschreibung: ${raw.description}`);
@@ -377,7 +409,7 @@ export function describeForClaude(raw) {
   if (raw.keywords?.length) lines.push(`Stichworte: ${raw.keywords.join(', ')}`);
   if (raw.ingredients?.length) lines.push('Zutaten:', ...raw.ingredients.map((i) => `- ${i}`));
   if (raw.steps?.length) lines.push('Zubereitung:', ...raw.steps.map((s, n) => `${n + 1}. ${s}`));
-  if (raw.page_text && raw.kind !== 'tiktok') lines.push('Seitentext:', raw.page_text);
+  if (raw.page_text && raw.kind !== 'tiktok') lines.push(raw.kind === 'text' ? 'Text:' : 'Seitentext:', raw.page_text);
   return `<rezeptdaten>\n${lines.join('\n')}\n</rezeptdaten>`;
 }
 
@@ -438,15 +470,21 @@ export async function handleRequest(req, env, fetchFn = fetch) {
     return reply(400, { error: 'Ungültige Anfrage.' });
   }
   const url = String(body?.url ?? '').trim();
-  if (!isPublicUrl(url)) return reply(400, { error: 'Bitte einen gültigen Link (https://…) einfügen.' });
+  const text = String(body?.text ?? '').trim();
 
-  // 1. Seite bzw. Video laden und auslesen
+  // 1. Eingefügten Text nehmen – oder Seite bzw. Video laden und auslesen
   let raw;
-  try {
-    raw = isTikTok(url) ? await importTikTok(url, fetchFn) : await importWebPage(url, fetchFn);
-  } catch (error) {
-    const message = error.name === 'TimeoutError' ? 'Die Seite hat zu lange nicht geantwortet.' : error.message;
-    return reply(502, { error: message });
+  if (text) {
+    if (text.length < MIN_TEXT) return reply(400, { error: 'Der eingefügte Text ist zu kurz für ein Rezept.' });
+    raw = importText(text, url);
+  } else {
+    if (!isPublicUrl(url)) return reply(400, { error: 'Bitte einen gültigen Link (https://…) einfügen.' });
+    try {
+      raw = isTikTok(url) ? await importTikTok(url, fetchFn) : await importWebPage(url, fetchFn);
+    } catch (error) {
+      const message = error.name === 'TimeoutError' ? 'Die Seite hat zu lange nicht geantwortet.' : error.message;
+      return reply(502, { error: message, blocked: error.blocked === true });
+    }
   }
 
   // 2. Von Claude aufbereiten lassen (Bild parallel laden)

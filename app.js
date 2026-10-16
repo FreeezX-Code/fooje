@@ -87,6 +87,9 @@ const importError = document.getElementById('import-error');
 const importPaste = document.getElementById('import-paste');
 const importCancel = document.getElementById('import-cancel');
 const importSubmit = document.getElementById('import-submit');
+const importTextToggle = document.getElementById('import-text-toggle');
+const importTextSection = document.getElementById('import-text-section');
+const importTextPaste = document.getElementById('import-text-paste');
 
 const formView = document.getElementById('form-view');
 const formNotice = document.getElementById('form-notice');
@@ -1128,7 +1131,30 @@ function openImport() {
   importForm.reset();
   importError.textContent = '';
   importStatus.hidden = true;
+  showImportText(false);
 }
+
+// Zweiter Weg: Rezepttext einfügen statt die Seite laden zu lassen
+function showImportText(show) {
+  importTextSection.hidden = !show;
+  importTextToggle.hidden = show;
+}
+
+importTextToggle.addEventListener('click', () => {
+  showImportText(true);
+  importForm.elements.namedItem('text').focus();
+});
+
+importTextPaste.addEventListener('click', async () => {
+  importError.textContent = '';
+  try {
+    const text = await navigator.clipboard.readText();
+    if (text.trim()) importForm.elements.namedItem('text').value = text;
+    else importError.textContent = 'Die Zwischenablage ist leer.';
+  } catch {
+    importError.textContent = 'Kein Zugriff auf die Zwischenablage – bitte lange ins Feld tippen und „Einfügen“ wählen.';
+  }
+});
 
 // Aus geteiltem Text den Link herausfischen ("Schau dir das an! https://vm.tiktok.com/…")
 function extractUrl(text) {
@@ -1149,8 +1175,9 @@ importPaste.addEventListener('click', async () => {
 importForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   const url = extractUrl(importForm.elements.namedItem('url').value);
-  if (!url) {
-    importError.textContent = 'Bitte einen Link (https://…) einfügen.';
+  const text = importTextSection.hidden ? '' : importForm.elements.namedItem('text').value.trim();
+  if (!url && !text) {
+    importError.textContent = importTextSection.hidden ? 'Bitte einen Link (https://…) einfügen.' : 'Bitte den Rezepttext einfügen.';
     return;
   }
   importError.textContent = '';
@@ -1159,7 +1186,7 @@ importForm.addEventListener('submit', async (event) => {
   importSubmit.textContent = 'Importiere …';
   importRunning = true;
   try {
-    const result = await importRecipe(url);
+    const result = await importRecipe(url ?? '', text);
     // Nur übernehmen, wenn man noch auf der Import-Seite ist (sonst nicht ungefragt ins Formular springen)
     if (location.hash === '#/import') {
       pendingDraft = result;
@@ -1167,6 +1194,8 @@ importForm.addEventListener('submit', async (event) => {
     }
   } catch (error) {
     importError.textContent = error.message;
+    // Seite blockt automatische Abrufe: gleich das Textfeld anbieten
+    if (error.details?.blocked) showImportText(true);
   } finally {
     importRunning = false;
     importStatus.hidden = true;
@@ -1200,15 +1229,15 @@ function showDraft(draft) {
 
   // Hinweis oben: woher, und ob es das Rezept schon gibt
   const source = draft.recipe.source_url;
-  const host = (() => {
+  const origin = (() => {
     try {
-      return new URL(source).hostname.replace(/^www\./, '');
+      return `aus ${new URL(source).hostname.replace(/^www\./, '')} importiert`;
     } catch {
-      return 'dem Link';
+      return 'aus dem eingefügten Text erstellt';
     }
   })();
   const lines = [document.createElement('p')];
-  lines[0].textContent = `✨ Von Claude aus ${host} importiert – bitte prüfen, bei Bedarf anpassen und speichern.`;
+  lines[0].textContent = `✨ Von Claude ${origin} – bitte prüfen, bei Bedarf anpassen und speichern.`;
   const duplicate = recipes.find((r) => r.source_url && r.source_url === source);
   if (duplicate) {
     const warning = document.createElement('p');

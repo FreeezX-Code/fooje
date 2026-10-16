@@ -133,6 +133,16 @@
               <input name="url" type="text" inputmode="url" placeholder="https://…" autocomplete="off" autocapitalize="off" spellcheck="false">
             </label>
             <button id="import-paste" type="button" class="button-secondary">📋 Aus Zwischenablage einfügen</button>
+            <button id="import-text-toggle" type="button" class="link-button">Stattdessen Rezepttext einfügen</button>
+          </section>
+          <!-- Für Seiten mit Bot-Schutz oder Rezepte aus Apps/Mails: Text kopieren und hier einfügen -->
+          <section id="import-text-section" class="form-card" hidden>
+            <p class="muted card-hint">Rezept im Browser öffnen, Zutaten und Zubereitung markieren, kopieren und hier einfügen. Den Link oben könnt ihr als Quelle stehen lassen.</p>
+            <label>
+              Rezepttext
+              <textarea name="text" rows="8" placeholder="Zutaten und Zubereitung hier einfügen …"></textarea>
+            </label>
+            <button id="import-text-paste" type="button" class="button-secondary">📋 Text aus Zwischenablage einfügen</button>
           </section>
           <p id="import-status" class="import-status" role="status" hidden>⏳ Wird importiert … das dauert meist 10–30 Sekunden.</p>
           <p id="import-error" class="error" role="alert"></p>

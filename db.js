@@ -109,18 +109,21 @@ async function invokeFunction(name, body, { failText, missingText }) {
   if (!error) return data;
 
   let message = failText;
+  let details = null;
   const response = error.context;
   if (response?.status === 404) {
     message = missingText;
   } else if (response && typeof response.json === 'function') {
     try {
-      const details = await response.json();
+      details = await response.json();
       if (details?.error) message = details.error;
     } catch {
       // keine lesbare Antwort – allgemeine Meldung behalten
     }
   }
-  throw new Error(message);
+  const failure = new Error(message);
+  failure.details = details; // z. B. { blocked: true } beim Import
+  throw failure;
 }
 
 // Schickt Zutaten über die Supabase-Funktion "bring" an die Bring!-Liste.
@@ -133,9 +136,10 @@ export function sendToBring(items) {
 }
 
 // Liest ein Rezept von einer Webseite oder einem TikTok-Video (Supabase-Funktion "import", mit Claude).
+// Mit text: eingefügten Rezepttext aufbereiten statt die Seite zu laden (url dann nur als Quelle).
 // Gibt { recipe, image: { type, data } | null, kind } zurück.
-export function importRecipe(url) {
-  return invokeFunction('import', { url }, {
+export function importRecipe(url, text = '') {
+  return invokeFunction('import', { url, text }, {
     failText: 'Import fehlgeschlagen. Bitte Internet prüfen.',
     missingText: 'Die Import-Funktion ist in Supabase noch nicht eingerichtet.',
   });
