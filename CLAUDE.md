@@ -76,11 +76,12 @@ Das Modell so anlegen, dass später Felder und Tabellen für die Wochenplanung e
    - Bild der Webseite wird automatisch übernommen (verkleinert); im Formular kann ein Foto auch aus der Zwischenablage eingefügt werden
    - Beide Handys: in der App „Rezept importieren“ mit „Aus Zwischenablage einfügen“. Teilen-Menü direkt in die App (Web Share Target) ist eingebaut, geht aber nur mit Chrome auf Android – wird von uns nicht genutzt
    - Ergebnis ist ein Entwurf im normalen Rezeptformular (Prüf-Bildschirm), gespeichert wird erst nach dem Prüfen; Hinweis, wenn dieselbe Quelle schon als Rezept existiert
-5. **Design-Runde 2** ← AKTUELL
-   - Ziel: Die App soll insgesamt hochwertiger und stimmiger wirken, Schwerpunkt Wochenplan (Hauptbildschirm). Keine neuen Funktionen
-   - Vorgehen: Pro Bildschirm zeigt Claude zuerst 2–3 Entwürfe als Bilder im Chat, wir wählen einen, dann wird umgebaut und am Handy geprüft
-   - Bleibt: Anthrazit, folgt Hell/Dunkel des Handys, dezente Animationen, große Schaltflächen
-   - App heißt „Fooje“, Symbol: helles Logo (blau-violettes F). Das Blau-Violett aus dem Logo wird als Akzentfarbe genutzt
+5. **Design-Runde 2** ✓ abgeschlossen
+   - App heißt „Fooje“, Symbol: helles Logo (blau-violettes F). Das Blau-Violett aus dem Logo ist die Akzentfarbe
+   - Wochenplan als Zeitleiste: Linie mit Punkt pro Tag, heute groß mit Bild, Hinweise „Gekauft“/„Festgehalten“ als Schildchen
+   - Rezeptliste als Bildraster (zwei Kacheln nebeneinander); Rezeptansicht mit großem Bild, Inhalt schiebt sich darüber, drei Kästchen Minuten | Portionen | Hauptkomponente
+   - Formular sieht aus wie die Rezeptansicht: Werte werden direkt an ihrer Stelle geändert, „Abbrechen“ oben auf dem Bild, unten nur „Speichern“
+   - Übrige Bildschirme im selben Stil, Akzentfarbe für alle Hauptknöpfe, Schalter, Haken und Textknöpfe
    - Später (verschoben): automatische Planung am gewählten Wochentag mit Benachrichtigung
 
 Nur an der aktuellen Stufe arbeiten. Spätere Stufen nicht vorwegnehmen.
@@ -94,8 +95,9 @@ Nur an der aktuellen Stufe arbeiten. Spätere Stufen nicht vorwegnehmen.
 ## Bedienung
 
 - Für Handys gebaut (Hochformat), große Schaltflächen, gut mit dem Daumen bedienbar
-- Ruhiges Design in Anthrazit-Tönen, folgt der Einstellung des Handys (hell oder Dunkelmodus); Farbe sparsam als Akzent
-- Rezepte als Bildkarten mit Text auf dem Foto; ohne Foto Farbkachel je Hauptkomponente
+- Ruhiges Design in Anthrazit-Tönen, folgt der Einstellung des Handys (hell oder Dunkelmodus); Blau-Violett aus dem Logo als Akzent für Knöpfe, Auswahl und „heute“
+- Rezepte als Bildkacheln (Bild oben, Name darunter); ohne Foto Farbkachel je Hauptkomponente
+- Rezeptansicht und Rezeptformular sehen gleich aus (Formular = Werte direkt an ihrer Stelle ändern)
 - Dezente Animationen (Einblenden, Antipp-Rückmeldung); bei „Bewegung reduzieren“ am Handy keine Animationen
 - Hält sich an die sicheren Bereiche des iPhones (Notch, Home-Leiste)
 - Funktioniert auch bei schlechtem Empfang lesend (zuletzt geladene Rezepte zwischenspeichern)
