@@ -1,4 +1,4 @@
-# Rezept-Wochenplaner
+# Fooje – Rezept-Wochenplaner
 
 Web-App (PWA) für zwei Personen: Sie verwaltet unsere gemeinsamen Rezepte, plant jede Woche automatisch einen ausgewogenen Essensplan und schickt die Zutaten an die Einkaufslisten-App Bring!. Genutzt wird sie auf einem Android-Handy und einem iPhone, jeweils vom Startbildschirm aus.
 
@@ -80,6 +80,7 @@ Das Modell so anlegen, dass später Felder und Tabellen für die Wochenplanung e
    - Ziel: Die App soll insgesamt hochwertiger und stimmiger wirken, Schwerpunkt Wochenplan (Hauptbildschirm). Keine neuen Funktionen
    - Vorgehen: Pro Bildschirm zeigt Claude zuerst 2–3 Entwürfe als Bilder im Chat, wir wählen einen, dann wird umgebaut und am Handy geprüft
    - Bleibt: Anthrazit, folgt Hell/Dunkel des Handys, dezente Animationen, große Schaltflächen
+   - App heißt „Fooje“, Symbol: helles Logo (blau-violettes F). Das Blau-Violett aus dem Logo wird als Akzentfarbe genutzt
    - Später (verschoben): automatische Planung am gewählten Wochentag mit Benachrichtigung
 
 Nur an der aktuellen Stufe arbeiten. Spätere Stufen nicht vorwegnehmen.

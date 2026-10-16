@@ -415,14 +415,10 @@ body.has-tab-bar .fab {
 }
 
 .login-logo {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  display: inline-block;
   width: 88px;
   height: 88px;
-  font-size: 3rem;
-  background: var(--color-surface);
-  border-radius: 28px;
+  border-radius: 22px;
   box-shadow: var(--shadow);
   animation: pop-in 0.5s var(--ease) 0.1s both;
 }
