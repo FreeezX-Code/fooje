@@ -70,11 +70,15 @@ export function isPublicUrl(text) {
   return true;
 }
 
-// Die Seite lässt keine automatischen Abrufe zu – dann muss der Rezepttext eingefügt werden
+// Die Seite lässt keine automatischen Abrufe zu – dann muss der Rezepttext eingefügt werden.
+// Der Fehlercode steht mit in der Meldung, damit sich die Ursache später nachvollziehen lässt.
 class BlockedError extends Error {
-  constructor() {
-    super('Diese Seite blockiert automatische Abrufe (Bot-Schutz). Öffne das Rezept im Browser, kopiere Zutaten und Zubereitung und füge sie hier als Text ein.');
+  constructor(status) {
+    super(status === 429
+      ? 'Die Seite lässt gerade keine weiteren automatischen Abrufe zu (Fehler 429: zu viele Anfragen). Später noch einmal versuchen – oder Zutaten und Zubereitung kopieren und hier als Text einfügen.'
+      : `Diese Seite blockiert automatische Abrufe (Bot-Schutz, Fehler ${status}). Öffne das Rezept im Browser, kopiere Zutaten und Zubereitung und füge sie hier als Text ein.`);
     this.blocked = true;
+    this.status = status;
   }
 }
 
@@ -88,7 +92,7 @@ async function fetchLimited(url, fetchFn, maxBytes, extraHeaders = {}) {
   const finalUrl = response.url || url;
   if (!isPublicUrl(finalUrl)) throw new Error('Diese Adresse kann nicht geladen werden.');
   // 403/429/503: meist ein Bot-Schutz (z. B. Cloudflare), der Server-Anfragen grundsätzlich blockt
-  if ([401, 403, 429, 503].includes(response.status)) throw new BlockedError();
+  if ([401, 403, 429, 503].includes(response.status)) throw new BlockedError(response.status);
   if (!response.ok) throw new Error(`Die Seite antwortet mit Fehler ${response.status}.`);
   const declared = Number(response.headers.get('content-length') ?? 0);
   if (declared > maxBytes) throw new Error('Die Seite ist zu groß.');
@@ -286,31 +290,75 @@ async function importWebPage(url, fetchFn) {
 
 export const isTikTok = (url) => /(^|\.)tiktok\.com$/i.test(new URL(url).hostname);
 
-async function importTikTok(url, fetchFn) {
-  // Kurzlinks (vm.tiktok.com/…) zuerst auflösen; Zusätze nach "?" weglassen (einheitliche Quelle)
-  let videoUrl = url.split('?')[0];
-  if (!/\/video\/\d+/.test(url)) {
-    const { finalUrl } = await fetchLimited(url, fetchFn, MAX_PAGE_BYTES);
-    videoUrl = finalUrl.split('?')[0];
+// Videodaten aus der TikTok-Seite: Sie stecken als JSON im Skript "__UNIVERSAL_DATA_FOR_REHYDRATION__".
+// Handy-Ansicht: Abschnitt "webapp.reflow.video.detail", Computer-Ansicht: "webapp.video-detail".
+export function tiktokFromPage(html) {
+  const json = html.match(/<script[^>]+id=["']__UNIVERSAL_DATA_FOR_REHYDRATION__["'][^>]*>([\s\S]*?)<\/script>/i)?.[1];
+  if (!json) return null;
+  let scope;
+  try {
+    scope = JSON.parse(json).__DEFAULT_SCOPE__ ?? {};
+  } catch {
+    return null;
   }
+  const item = (scope['webapp.reflow.video.detail'] ?? scope['webapp.video-detail'])?.itemInfo?.itemStruct;
+  if (!item) return null;
+  return {
+    caption: cleanText(item.desc ?? ''),
+    author: item.author?.nickname || item.author?.uniqueId || '',
+    image_url: item.video?.originCover || item.video?.cover || null,
+  };
+}
+
+// Notweg: offizielle Einbettungs-Schnittstelle. Sie ist stark gedrosselt (429) und liefert
+// inzwischen oft keine Beschreibung mehr – deshalb nur, wenn die Seite selbst nichts hergibt.
+async function tiktokFromOembed(videoUrl, fetchFn) {
   const { buffer } = await fetchLimited(`https://www.tiktok.com/oembed?url=${encodeURIComponent(videoUrl)}`, fetchFn, 200_000);
   const data = JSON.parse(new TextDecoder().decode(buffer));
-  const caption = cleanText(data.title ?? '');
-  if (!caption) throw new Error('Dieses TikTok hat keine Beschreibung, aus der sich ein Rezept lesen lässt.');
+  return { caption: cleanText(data.title ?? ''), author: data.author_name ?? '', image_url: data.thumbnail_url ?? null };
+}
+
+async function importTikTok(url, fetchFn) {
+  // Videoseite laden (Kurzlinks wie vm.tiktok.com/… werden dabei automatisch aufgelöst)
+  let videoUrl = url.split('?')[0];
+  let video = null;
+  let pageError = null;
+  try {
+    const { finalUrl, buffer } = await fetchLimited(url, fetchFn, MAX_PAGE_BYTES, { Accept: 'text/html,application/xhtml+xml' });
+    videoUrl = finalUrl.split('?')[0]; // Zusätze nach "?" weglassen (einheitliche Quelle)
+    video = tiktokFromPage(new TextDecoder('utf-8').decode(buffer));
+  } catch (error) {
+    pageError = error;
+  }
+
+  if (!video?.caption) {
+    try {
+      const fallback = await tiktokFromOembed(videoUrl, fetchFn);
+      if (fallback.caption) video = fallback;
+    } catch (error) {
+      // Die Meldung der Seite ist aussagekräftiger als die des Notwegs
+      throw pageError ?? error;
+    }
+  }
+  if (!video?.caption) {
+    if (pageError) throw pageError;
+    throw new Error('Dieses TikTok hat keine Beschreibung, aus der sich ein Rezept lesen lässt.');
+  }
+
   return {
     kind: 'tiktok',
     structured: false,
     source_url: videoUrl,
     title: '',
-    description: caption,
-    author: data.author_name ?? '',
+    description: video.caption,
+    author: video.author,
     ingredients: [],
     steps: [],
     servings: null,
     prep_time_minutes: null,
     keywords: [],
-    image_url: data.thumbnail_url ?? null,
-    page_text: caption,
+    image_url: video.image_url,
+    page_text: video.caption,
   };
 }
 
