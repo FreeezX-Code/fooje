@@ -72,6 +72,8 @@ Das Modell so anlegen, dass später Felder und Tabellen für die Wochenplanung e
 4. **Import aus Web und TikTok** ✓ abgeschlossen
    - Supabase-Funktion lädt die Seite (der Browser darf fremde Seiten nicht direkt laden): Webrezepte über Schema.org-Daten, sonst Seitentext; TikTok über die Videobeschreibung (Rezepte, die nur im Video gesprochen werden, sind nicht auslesbar)
    - Seiten mit Bot-Schutz (z. B. Rewe) blockieren den Abruf: Dann öffnet sich „Rezepttext einfügen“ – Text im Browser kopieren und einfügen, der Link bleibt als Quelle
+   - Viele Seiten und TikTok drosseln bzw. sperren Abrufe vom Supabase-Server (Fehler 429/403, Meldung nennt den Code). TikTok-Beschreibung wird aus der Videoseite gelesen, oEmbed nur als Notweg
+   - Screenshot-Import: bis zu 4 Screenshots (z. B. Instagram, wo der Abruf gar nicht geht); die App verkleinert sie auf 1800 px, Claude liest das Rezept aus den Bildern (≈ 3–6 Cent pro Rezept)
    - Claude (Anthropic-API, Schlüssel nur als Supabase-Geheimnis) bereitet bei jedem Import auf: Zutaten sauber in Menge/Einheit/Name, Schritte, Portionen, Zeit, Hauptkomponente, Beilage, Tags
    - Bild der Webseite wird automatisch übernommen (verkleinert); im Formular kann ein Foto auch aus der Zwischenablage eingefügt werden
    - Beide Handys: in der App „Rezept importieren“ mit „Aus Zwischenablage einfügen“. Teilen-Menü direkt in die App (Web Share Target) ist eingebaut, geht aber nur mit Chrome auf Android – wird von uns nicht genutzt

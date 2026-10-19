@@ -2284,3 +2284,34 @@ body.sheet-open {
   color: var(--color-on-accent);
   background: var(--color-accent);
 }
+
+/* ---------- Import: Screenshots ---------- */
+
+/* Datei-Auswahl als normaler Knopf (sonst greift die Gestaltung für Feld-Beschriftungen) */
+.form label.file-button {
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.import-images-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  padding: 4px 12px;
+  font-weight: 600;
+  background: var(--color-accent-soft);
+  color: var(--color-on-accent-soft);
+  border-radius: var(--radius-small);
+}
+
+.import-images-info .link-button {
+  align-self: center;
+}

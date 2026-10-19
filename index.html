@@ -127,12 +127,21 @@
         <h2 class="form-title">Rezept importieren</h2>
         <form id="import-form" class="form">
           <section class="form-card">
-            <p class="muted card-hint">Link zu einer Rezept-Webseite oder einem TikTok-Video. Claude liest das Rezept aus, danach prüft ihr es im Formular und speichert.</p>
+            <p class="muted card-hint">Link zu einer Rezept-Webseite oder einem TikTok-Video – oder Screenshots (z. B. von Instagram). Claude liest das Rezept aus, danach prüft ihr es im Formular und speichert.</p>
             <label>
               Link
               <input name="url" type="text" inputmode="url" placeholder="https://…" autocomplete="off" autocapitalize="off" spellcheck="false">
             </label>
             <button id="import-paste" type="button" class="button-secondary">📋 Aus Zwischenablage einfügen</button>
+            <!-- Screenshots: funktionieren auch, wenn eine Seite den Abruf sperrt (Instagram, Bot-Schutz) -->
+            <label class="button-secondary file-button">
+              📷 Screenshots wählen
+              <input id="import-images" type="file" accept="image/*" multiple hidden>
+            </label>
+            <p id="import-images-info" class="import-images-info" hidden>
+              <span id="import-images-text"></span>
+              <button id="import-images-clear" type="button" class="link-button">Entfernen</button>
+            </p>
             <button id="import-text-toggle" type="button" class="link-button">Stattdessen Rezepttext einfügen</button>
           </section>
           <!-- Für Seiten mit Bot-Schutz oder Rezepte aus Apps/Mails: Text kopieren und hier einfügen -->

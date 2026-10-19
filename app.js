@@ -90,6 +90,9 @@ const importSubmit = document.getElementById('import-submit');
 const importTextToggle = document.getElementById('import-text-toggle');
 const importTextSection = document.getElementById('import-text-section');
 const importTextPaste = document.getElementById('import-text-paste');
+const importImagesInput = document.getElementById('import-images');
+const importImagesInfo = document.getElementById('import-images-info');
+const importImagesText = document.getElementById('import-images-text');
 
 const formView = document.getElementById('form-view');
 const formNotice = document.getElementById('form-notice');
@@ -1126,6 +1129,8 @@ newRecipeButton.addEventListener('click', async () => {
 });
 
 let importRunning = false;
+let importImages = []; // gewählte Screenshots, verkleinert: [{ type, data (Base64) }]
+let pendingImages = null; // läuft gerade das Verkleinern? (Promise)
 
 function openImport() {
   if (importRunning) return; // Import läuft noch: alles stehen lassen
@@ -1133,6 +1138,7 @@ function openImport() {
   importError.textContent = '';
   importStatus.hidden = true;
   showImportText(false);
+  setImportImages([]);
 
   // Per "Teilen" geschickt: Link einsetzen und gleich importieren (bzw. Text einsetzen)
   const shared = pendingShare;
@@ -1170,6 +1176,53 @@ importTextPaste.addEventListener('click', async () => {
   }
 });
 
+// ---- Screenshots ----
+
+const MAX_SCREENSHOTS = 4;
+const SCREENSHOT_SIZE = 1800; // lange Seite in Pixeln: Text bleibt gut lesbar, Kosten bleiben klein
+
+// Verkleinert ein Bild und gibt es als JPEG in Base64 zurück (so geht es an die Supabase-Funktion)
+async function screenshotToBase64(file) {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, SCREENSHOT_SIZE / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+  return { type: 'image/jpeg', data: dataUrl.slice(dataUrl.indexOf(',') + 1) };
+}
+
+function setImportImages(images) {
+  importImages = images;
+  importImagesInfo.hidden = images.length === 0;
+  importImagesText.textContent = images.length === 1 ? '📷 1 Screenshot gewählt' : `📷 ${images.length} Screenshots gewählt`;
+}
+
+importImagesInput.addEventListener('change', () => {
+  const files = [...importImagesInput.files];
+  importImagesInput.value = ''; // damit dieselben Bilder erneut gewählt werden können
+  if (files.length === 0) return;
+  importError.textContent = '';
+  if (files.length > MAX_SCREENSHOTS) {
+    importError.textContent = `Bitte höchstens ${MAX_SCREENSHOTS} Screenshots wählen – die ersten ${MAX_SCREENSHOTS} werden genommen.`;
+  }
+  importImagesInfo.hidden = false;
+  importImagesText.textContent = '📷 Screenshots werden vorbereitet …';
+  pendingImages = Promise.all(files.slice(0, MAX_SCREENSHOTS).map(screenshotToBase64))
+    .then(setImportImages)
+    .catch(() => {
+      setImportImages([]);
+      importError.textContent = 'Diese Bilder können nicht verwendet werden. Bitte andere Screenshots wählen.';
+    })
+    .finally(() => {
+      pendingImages = null;
+    });
+});
+
+document.getElementById('import-images-clear').addEventListener('click', () => setImportImages([]));
+
 // Aus geteiltem Text den Link herausfischen ("Schau dir das an! https://vm.tiktok.com/…")
 function extractUrl(text) {
   return String(text ?? '').match(/https?:\/\/[^\s<>"']+/i)?.[0].replace(/[).,!?]+$/, '') ?? null;
@@ -1188,10 +1241,12 @@ importPaste.addEventListener('click', async () => {
 
 importForm.addEventListener('submit', async (event) => {
   event.preventDefault();
+  if (pendingImages) await pendingImages; // Screenshots erst fertig verkleinern
   const url = extractUrl(importForm.elements.namedItem('url').value);
   const text = importTextSection.hidden ? '' : importForm.elements.namedItem('text').value.trim();
-  if (!url && !text) {
-    importError.textContent = importTextSection.hidden ? 'Bitte einen Link (https://…) einfügen.' : 'Bitte den Rezepttext einfügen.';
+  const images = importImages;
+  if (!url && !text && images.length === 0) {
+    importError.textContent = importTextSection.hidden ? 'Bitte einen Link (https://…) einfügen oder Screenshots wählen.' : 'Bitte den Rezepttext einfügen.';
     return;
   }
   importError.textContent = '';
@@ -1200,7 +1255,7 @@ importForm.addEventListener('submit', async (event) => {
   importSubmit.textContent = 'Importiere …';
   importRunning = true;
   try {
-    const result = await importRecipe(url ?? '', text);
+    const result = await importRecipe(url ?? '', images.length > 0 ? '' : text, images);
     // Nur übernehmen, wenn man noch auf der Import-Seite ist (sonst nicht ungefragt ins Formular springen)
     if (location.hash === '#/import') {
       pendingDraft = result;

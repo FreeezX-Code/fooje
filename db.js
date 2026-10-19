@@ -137,9 +137,10 @@ export function sendToBring(items) {
 
 // Liest ein Rezept von einer Webseite oder einem TikTok-Video (Supabase-Funktion "import", mit Claude).
 // Mit text: eingefügten Rezepttext aufbereiten statt die Seite zu laden (url dann nur als Quelle).
+// Mit images ([{ type, data }], Base64): Rezept aus Screenshots lesen lassen.
 // Gibt { recipe, image: { type, data } | null, kind } zurück.
-export function importRecipe(url, text = '') {
-  return invokeFunction('import', { url, text }, {
+export function importRecipe(url, text = '', images = []) {
+  return invokeFunction('import', { url, text, images }, {
     failText: 'Import fehlgeschlagen. Bitte Internet prüfen.',
     missingText: 'Die Import-Funktion ist in Supabase noch nicht eingerichtet.',
   });
